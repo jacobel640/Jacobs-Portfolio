@@ -290,9 +290,13 @@ export const Projects: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              className="bg-slate-900/95 border border-white/[0.12] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/80 my-auto text-left relative"
+              className="bg-slate-900/95 border border-white/[0.12] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl shadow-black/80 my-auto text-left relative flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* The scroll container is separate from the rounded shell above,
+                  so the scrollbar is clipped by the corners instead of being
+                  painted across them. */}
+              <div className="modal-scroll flex-1 overflow-y-auto overscroll-contain">
               {/* Modal Header */}
               <div className="sticky top-0 z-20 flex items-center justify-between p-6 sm:px-8 border-b border-white/[0.08] bg-slate-900/95 backdrop-blur-2xl">
                 <div className="flex items-center gap-4">
@@ -497,6 +501,7 @@ export const Projects: FC = () => {
                     )}
                   </div>
                 </div>
+              </div>
               </div>
             </motion.div>
           </div>
