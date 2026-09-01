@@ -80,7 +80,7 @@ export const Skills: FC = () => {
   return (
     <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
       {/* Background Subtle Mesh Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[20rem] bg-indigo-900/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="ambient-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[20rem] bg-indigo-900/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Header */}
       <div className="relative z-10 text-center space-y-4 mb-16">

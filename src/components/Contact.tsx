@@ -76,12 +76,12 @@ export const Contact: FC = () => {
   ];
 
   return (
-    <footer id="contact" className="relative bg-[#030712] text-slate-100 overflow-hidden pt-20 pb-12">
+    <footer id="contact" className="relative bg-[#030712] text-slate-100 overflow-hidden pt-24 pb-12">
       {/* Background Decorative Mesh Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[650px] h-[350px] bg-gradient-to-b from-indigo-600/15 via-purple-600/10 to-transparent blur-[120px]" />
-        <div className="absolute -bottom-24 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-24 left-10 w-80 h-80 bg-purple-600/10 rounded-full blur-[100px]" />
+        <div className="ambient-glow absolute -top-32 left-1/2 -translate-x-1/2 w-[650px] h-[350px] bg-gradient-to-b from-indigo-600/15 via-purple-600/10 to-transparent blur-[120px]" />
+        <div className="ambient-glow absolute -bottom-24 right-10 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
+        <div className="ambient-glow absolute -bottom-24 left-10 w-80 h-80 bg-purple-600/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

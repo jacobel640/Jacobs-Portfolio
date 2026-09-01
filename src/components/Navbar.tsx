@@ -1,4 +1,4 @@
-import { useState, useEffect, FC } from 'react';
+import { useState, useEffect, useRef, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Code2, Sparkles, ArrowRight, Github } from 'lucide-react';
 
@@ -21,6 +21,11 @@ export const Navbar: FC = () => {
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
+  // While a nav click is gliding to its section, the scroll spy would report
+  // every section it passes and the indicator would animate through each one.
+  // Hold it on the destination until the scroll settles.
+  const glidingToRef = useRef<string | null>(null);
+
   useEffect(() => {
     const sections = navItems.map((item) => item.href.slice(1));
     let frame = 0;
@@ -28,6 +33,8 @@ export const Navbar: FC = () => {
     const measure = () => {
       frame = 0;
       setIsScrolled(window.scrollY > 20);
+
+      if (glidingToRef.current) return;
 
       const scrollPosition = window.scrollY + 200;
       for (const section of sections) {
@@ -56,11 +63,32 @@ export const Navbar: FC = () => {
     };
   }, []);
 
+  // Release the spy once scrolling has been quiet for a moment, with a ceiling
+  // in case the scroll never starts (already at the destination).
+  const releaseWhenSettled = () => {
+    let quiet: ReturnType<typeof setTimeout>;
+    const done = () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(ceiling);
+      glidingToRef.current = null;
+    };
+    const onScroll = () => {
+      clearTimeout(quiet);
+      quiet = setTimeout(done, 140);
+    };
+    const ceiling = setTimeout(done, 2000);
+    quiet = setTimeout(done, 400);
+    window.addEventListener('scroll', onScroll, { passive: true });
+  };
+
   const handleNavClick = (href: string) => {
     setMobileMenuOpen(false);
     const targetId = href.replace('#', '');
     const element = document.getElementById(targetId);
     if (element) {
+      glidingToRef.current = targetId;
+      setActiveSection(targetId);
+      releaseWhenSettled();
       element.scrollIntoView({ behavior: 'smooth' });
       // Reflect the section in the URL so it can be copied and shared, without
       // adding a history entry for every click.

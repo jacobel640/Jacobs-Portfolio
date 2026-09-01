@@ -103,7 +103,7 @@ export const ProjectsSkeleton: FC = () => {
 
 export const ContactSkeleton: FC = () => {
   return (
-    <footer id="contact" aria-busy="true" aria-label="Loading contact" className="relative bg-[#030712] overflow-hidden pt-20 pb-12 animate-pulse">
+    <footer id="contact" aria-busy="true" aria-label="Loading contact" className="relative bg-[#030712] overflow-hidden pt-24 pb-12 animate-pulse">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
         <div className="w-44 h-7 rounded-full bg-slate-800/80 mb-6" />
         <div className="w-72 sm:w-[500px] h-12 rounded-2xl bg-slate-800/90 mb-6" />
