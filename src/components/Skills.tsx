@@ -117,7 +117,10 @@ export const Skills: FC = () => {
       </div>
 
       {/* Grid of 3 Glassmorphic Cards */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* Each card spans three parent rows and mirrors them with subgrid, so the
+          header, body and technologies bands line up across the row no matter
+          how the copy wraps at a given width. */}
+      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 grid-rows-[repeat(9,auto)] md:grid-rows-[repeat(6,auto)] lg:grid-rows-[repeat(3,auto)]">
         {skillCategories.map((category, idx) => {
           const Icon = category.icon;
           return (
@@ -127,48 +130,55 @@ export const Skills: FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.6, delay: idx * 0.15 }}
-              className="group relative flex flex-col justify-between rounded-3xl border border-white/[0.08] hover:border-white/[0.2] bg-slate-900/50 hover:bg-slate-900/75 p-7 sm:p-8 shadow-xl shadow-black/40 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 hover:-translate-y-2 backdrop-blur-xl overflow-hidden"
+              className="group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl border border-white/[0.08] hover:border-white/[0.2] bg-slate-900/50 hover:bg-slate-900/75 p-7 sm:p-8 shadow-xl shadow-black/40 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 hover:-translate-y-2 backdrop-blur-xl overflow-hidden"
             >
               {/* Top Gradient Highlight Line */}
               <div
                 className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${category.accentGradient} opacity-75 group-hover:opacity-100 transition-opacity duration-300`}
               />
 
-              {/* Card Header & Description */}
-              <div>
-                <div className="flex items-center gap-4 mb-6">
-                  <div
-                    className={`p-3.5 rounded-2xl border ${category.iconBg} shadow-inner group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
-                      {category.title}
-                    </h3>
-                    <p className="text-xs font-medium text-slate-400 mt-0.5">{category.subtitle}</p>
-                  </div>
+              {/* Band 1 — identity */}
+              <div className="flex items-start gap-4 mb-6">
+                <div
+                  className={`p-3.5 rounded-2xl border ${category.iconBg} shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0`}
+                >
+                  <Icon className="w-6 h-6" />
                 </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
+                    {category.title}
+                  </h3>
+                  <p className="text-xs font-medium text-slate-400 mt-0.5">{category.subtitle}</p>
+                </div>
+              </div>
 
+              {/* Band 2 — what it means in practice */}
+              <div className="pb-6">
                 <p className="text-sm text-slate-300/90 mb-5 leading-relaxed">
                   {category.description}
                 </p>
 
                 {/* Proof points for this discipline */}
-                <ul className="space-y-2 mb-6">
+                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Selected Impact</span>
+                </div>
+                <ul className="space-y-2">
                   {category.highlights.map((highlight) => (
                     <li
                       key={highlight}
-                      className="flex items-start gap-2 text-[13px] leading-snug text-slate-400"
+                      className="flex items-start gap-2.5 text-[13px] leading-snug text-slate-300/90"
                     >
-                      <Sparkles className="w-3 h-3 mt-1 shrink-0 text-amber-400/80" />
+                      <span
+                        className={`mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r ${category.accentGradient}`}
+                      />
                       <span>{highlight}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Technologies List */}
+              {/* Band 3 — the stack */}
               <div className="pt-4 border-t border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <Layers className="w-3.5 h-3.5 text-indigo-400" />
