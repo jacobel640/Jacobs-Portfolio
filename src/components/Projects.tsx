@@ -13,6 +13,7 @@ import {
   ZoomIn,
   ArrowRight,
   Server,
+  Loader2,
 } from 'lucide-react';
 import { projects, thumbFor } from '../data/projects';
 import type { FilterType, Project, Screenshot } from '../data/projects';
@@ -21,6 +22,7 @@ export const Projects: FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedImage, setSelectedImage] = useState<Screenshot | null>(null);
+  const [fullImageReady, setFullImageReady] = useState(false);
 
   // The card that opened the modal, so focus can be handed back on close.
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -56,6 +58,11 @@ export const Projects: FC = () => {
     frame = requestAnimationFrame(hold);
     return () => cancelAnimationFrame(frame);
   }, [activeFilter]);
+
+  // A new lightbox image starts out as the thumbnail again.
+  useEffect(() => {
+    setFullImageReady(false);
+  }, [selectedImage]);
 
   const closeProject = useCallback(() => {
     setSelectedImage(null);
@@ -328,7 +335,7 @@ export const Projects: FC = () => {
               {/* The scroll container is separate from the rounded shell above,
                   so the scrollbar is clipped by the corners instead of being
                   painted across them. */}
-              <div className="modal-scroll flex-1 overflow-y-auto overscroll-contain">
+              <div className="modal-scroll flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
               {/* Modal Header */}
               <div className="sticky top-0 z-20 flex items-center justify-between p-6 sm:px-8 border-b border-white/[0.08] bg-slate-900/95 backdrop-blur-2xl">
                 <div className="flex items-center gap-4">
@@ -449,25 +456,23 @@ export const Projects: FC = () => {
                             type="button"
                             onClick={() => setSelectedImage(shot)}
                             aria-label={`Zoom: ${shot.caption}`}
-                            className="group relative block w-full rounded-[1.35rem] p-1.5 bg-slate-950/80 border border-white/[0.10] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                            className="group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                           >
-                            <span className="block overflow-hidden rounded-[0.95rem] aspect-[9/19.5] bg-slate-900">
-                              <img
-                                src={thumbFor(shot.src)}
-                                alt={`${selectedProject.title} — ${shot.caption}`}
-                                loading="lazy"
-                                decoding="async"
-                                width={432}
-                                height={936}
-                                onError={(e) => {
-                                  // Fall back to the original PNG if the WebP thumb is missing.
-                                  const img = e.currentTarget;
-                                  if (img.src !== shot.src) img.src = shot.src;
-                                }}
-                                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
-                              />
-                            </span>
-                            <span className="absolute inset-1.5 rounded-[0.95rem] bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
+                            <img
+                              src={thumbFor(shot.src)}
+                              alt={`${selectedProject.title} — ${shot.caption}`}
+                              loading="lazy"
+                              decoding="async"
+                              width={432}
+                              height={960}
+                              onError={(e) => {
+                                // Fall back to the original PNG if the WebP thumb is missing.
+                                const img = e.currentTarget;
+                                if (img.src !== shot.src) img.src = shot.src;
+                              }}
+                              className="block w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                            />
+                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
                               <span className="p-1.5 rounded-lg bg-blue-600/90 text-white">
                                 <ZoomIn className="w-3.5 h-3.5" />
                               </span>
@@ -567,11 +572,42 @@ export const Projects: FC = () => {
                 <X className="w-5 h-5" />
               </button>
 
-              <img
-                src={selectedImage.src}
-                alt={selectedImage.caption}
-                className="max-w-full max-h-[80vh] object-contain rounded-2xl border border-white/[0.15] shadow-2xl"
-              />
+              {/* The grid already fetched the thumbnail, so it paints immediately
+                  and holds the frame at the right size while the full-resolution
+                  PNG arrives — rather than an empty box with the close button
+                  floating in the middle of it. */}
+              <div className="relative aspect-[9/20] h-[76vh] max-w-full overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950">
+                <img
+                  src={thumbFor(selectedImage.src)}
+                  alt=""
+                  aria-hidden="true"
+                  className={`absolute inset-0 w-full h-full object-cover blur-[3px] scale-105 transition-opacity duration-300 ${
+                    fullImageReady ? 'opacity-0' : 'opacity-100'
+                  }`}
+                />
+
+                {!fullImageReady && (
+                  <span className="absolute inset-0 flex items-center justify-center" role="status">
+                    <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
+                    <span className="sr-only">Loading full-resolution screenshot</span>
+                  </span>
+                )}
+
+                <img
+                  key={selectedImage.src}
+                  src={selectedImage.src}
+                  alt={selectedImage.caption}
+                  ref={(node) => {
+                    // A cached image can already be complete before onLoad binds.
+                    if (node?.complete) setFullImageReady(true);
+                  }}
+                  onLoad={() => setFullImageReady(true)}
+                  onError={() => setFullImageReady(true)}
+                  className={`relative w-full h-full object-cover transition-opacity duration-300 ${
+                    fullImageReady ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              </div>
 
               <p className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide">
                 {selectedImage.caption}
