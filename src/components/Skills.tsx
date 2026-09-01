@@ -150,9 +150,22 @@ export const Skills: FC = () => {
                   </div>
                 </div>
 
-                <p className="text-sm text-slate-300/90 mb-6 leading-relaxed">
+                <p className="text-sm text-slate-300/90 mb-5 leading-relaxed">
                   {category.description}
                 </p>
+
+                {/* Proof points for this discipline */}
+                <ul className="space-y-2 mb-6">
+                  {category.highlights.map((highlight) => (
+                    <li
+                      key={highlight}
+                      className="flex items-start gap-2 text-[13px] leading-snug text-slate-400"
+                    >
+                      <Sparkles className="w-3 h-3 mt-1 shrink-0 text-amber-400/80" />
+                      <span>{highlight}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* Technologies List */}

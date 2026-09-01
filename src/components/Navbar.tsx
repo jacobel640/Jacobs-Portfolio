@@ -7,6 +7,8 @@ interface NavItem {
   href: string;
 }
 
+const GITHUB_URL = 'https://github.com/jacobel640';
+
 const navItems: NavItem[] = [
   { name: 'About', href: '#hero' },
   { name: 'Skills', href: '#skills' },
@@ -20,28 +22,38 @@ export const Navbar: FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const sections = navItems.map((item) => item.href.slice(1));
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
       setIsScrolled(window.scrollY > 20);
 
-      const sections = ['hero', 'skills', 'projects', 'contact'];
       const scrollPosition = window.scrollY + 200;
-
       for (const section of sections) {
         const el = document.getElementById(section);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(section);
-            break;
-          }
+        if (!el) continue;
+        const { top, height } = el.getBoundingClientRect();
+        const absoluteTop = top + window.scrollY;
+        if (scrollPosition >= absoluteTop && scrollPosition < absoluteTop + height) {
+          setActiveSection(section);
+          break;
         }
       }
     };
 
+    // Coalesce scroll events into one measurement per animation frame.
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(measure);
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+    measure();
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   const handleNavClick = (href: string) => {
@@ -50,8 +62,21 @@ export const Navbar: FC = () => {
     const element = document.getElementById(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // The lazy chunk for this section has not mounted yet; let the browser
+      // resolve the anchor once it does instead of swallowing the click.
+      window.location.hash = href;
     }
   };
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileMenuOpen]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 pt-4 sm:pt-6 pointer-events-none">
@@ -70,7 +95,7 @@ export const Navbar: FC = () => {
             e.preventDefault();
             handleNavClick('#hero');
           }}
-          className="group flex items-center gap-2.5 text-white font-bold tracking-tight focus:outline-none"
+          className="group flex items-center gap-2.5 text-white font-bold tracking-tight rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
         >
           <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
             <Code2 className="w-4 h-4 text-white" />
@@ -93,7 +118,8 @@ export const Navbar: FC = () => {
                   e.preventDefault();
                   handleNavClick(item.href);
                 }}
-                className={`relative px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
                   isActive
                     ? 'text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
@@ -115,7 +141,7 @@ export const Navbar: FC = () => {
         {/* Desktop Quick Actions */}
         <div className="hidden md:flex items-center gap-3">
           <a
-            href="https://github.com/Jacobel640"
+            href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 text-slate-400 hover:text-white rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] transition-all"
@@ -141,7 +167,7 @@ export const Navbar: FC = () => {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/60 border border-white/[0.08] focus:outline-none"
+            className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/60 border border-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -185,7 +211,7 @@ export const Navbar: FC = () => {
               })}
               <div className="pt-3 mt-1 border-t border-slate-800 flex items-center justify-between gap-3">
                 <a
-                  href="https://github.com/Jacobel640"
+                  href={GITHUB_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 text-slate-300 text-xs font-medium border border-slate-700 w-1/2 justify-center"

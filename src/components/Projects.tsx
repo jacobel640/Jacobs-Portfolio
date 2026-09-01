@@ -1,11 +1,8 @@
-import { useState, useEffect, FC } from 'react';
+import { useState, useEffect, useRef, useCallback, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Folder,
   Github,
-  Globe,
-  Smartphone,
-  Server,
   X,
   Lock,
   CheckCircle2,
@@ -15,279 +12,67 @@ import {
   Layers,
   ZoomIn,
   ArrowRight,
+  Server,
 } from 'lucide-react';
-
-export interface ProjectDetails {
-  overview: string;
-  architecture: string[];
-  features: string[];
-  screenshots?: string[];
-}
-
-export interface Project {
-  id: string;
-  title: string;
-  category: 'Android' | 'Fullstack' | 'Backend';
-  categoryLabel: string;
-  description: string;
-  detailedContent: ProjectDetails;
-  tags: string[];
-  github?: string;
-  demo?: string;
-  isPrivate?: boolean;
-  icon: typeof Folder;
-  screenshots?: string[];
-}
-
-export const projects: Project[] = [
-  {
-    id: 'taskflow',
-    title: 'TaskFlow',
-    category: 'Android',
-    categoryLabel: 'Native Android App',
-    description:
-      'Engineered a modular task-management application and enforced Clean Architecture and MVVM patterns for scalability. Integrated Hilt for dependency injection and Room for local persistence with parameterized SQL queries.',
-    detailedContent: {
-      overview:
-        'TaskFlow is a robust, offline-first productivity platform built entirely natively for Android. The focus was heavily on establishing a scalable foundation utilizing industry-standard Clean Architecture, allowing the UI, domain, and data layers to evolve independently without tight coupling.',
-      architecture: [
-        'Clean Architecture separates Domain, Data, and Presentation layers',
-        'MVVM Pattern paired with Jetpack Compose for declarative UI rendering',
-        'Hilt for robust dependency injection across the application lifecycle',
-        'Room Database with parameterized queries for secure, offline-first storage',
-        'WorkManager for reliable background thread synchronization and daily scheduled notifications',
-      ],
-      features: [
-        'Interactive task creation, sorting, and priority categorization',
-        'Background synchronization ensuring zero data loss on network drops',
-        'Dynamic Material Design 3 user interface with dark theme support',
-        'Scheduled local notifications for task deadlines and calendar view',
-      ],
-      screenshots: [
-        '/screenshots/taskflow/HomeScreen_filters.png',
-        '/screenshots/taskflow/SingleTaskScreen.png',
-        '/screenshots/taskflow/AddEditTaskScreen.png',
-        '/screenshots/taskflow/CalendarScreen_day.png',
-        '/screenshots/taskflow/CalendarScreen_month.png',
-        '/screenshots/taskflow/HomeScreen_sorting.png',
-        '/screenshots/taskflow/HomeScreen_mark-completed_undo-deletion.png',
-        '/screenshots/taskflow/NotificationTimeDialog.png',
-        '/screenshots/taskflow/app_icon.png',
-      ],
-    },
-    screenshots: [
-      '/screenshots/taskflow/HomeScreen_filters.png',
-      '/screenshots/taskflow/SingleTaskScreen.png',
-      '/screenshots/taskflow/AddEditTaskScreen.png',
-      '/screenshots/taskflow/CalendarScreen_day.png',
-      '/screenshots/taskflow/CalendarScreen_month.png',
-      '/screenshots/taskflow/HomeScreen_sorting.png',
-      '/screenshots/taskflow/HomeScreen_mark-completed_undo-deletion.png',
-      '/screenshots/taskflow/NotificationTimeDialog.png',
-      '/screenshots/taskflow/app_icon.png',
-    ],
-    tags: ['Kotlin', 'Compose', 'MVVM', 'Hilt', 'Room', 'WorkManager'],
-    github: 'https://github.com/Jacobel640/TaskFlow',
-    isPrivate: false,
-    icon: Smartphone,
-  },
-  {
-    id: 'gio-manetti',
-    title: 'GIO MANETTI E-Commerce',
-    category: 'Fullstack',
-    categoryLabel: 'Fullstack E-Commerce Platform',
-    description:
-      'Architected the system design, data modeling schemas, and AI agent execution plans for a comprehensive full-stack platform leveraging Next.js, Spring Boot, PostgreSQL, and Headless CMS integrations.',
-    detailedContent: {
-      overview:
-        'GIO MANETTI represents a modern, luxury e-commerce platform built to handle scale. This project involved designing the entire data schema from scratch and executing a full-stack implementation plan driven by AI agent workflows.',
-      architecture: [
-        'Frontend built with Next.js & React for SSR and optimal SEO performance',
-        'Backend powered by Java Spring Boot for robust transaction handling',
-        'PostgreSQL database utilizing normalized schemas for inventory management',
-        'Headless CMS integration for dynamic marketing content',
-        'GraphQL / BFF (Backend-For-Frontend) layer to optimize client data fetching',
-      ],
-      features: [
-        'End-to-end shopping cart and secure checkout flows',
-        'Dynamic product filtering and variant inventory management',
-        'Administrative dashboard for order monitoring and metrics',
-        'High-performance image serving and CDN caching',
-      ],
-      screenshots: [],
-    },
-    screenshots: [],
-    tags: ['Next.js', 'Spring Boot', 'PostgreSQL', 'GraphQL', 'Headless CMS'],
-    github: 'https://github.com/Jacobel640/GIO-online-shop',
-    isPrivate: true,
-    icon: Globe,
-  },
-  {
-    id: 'tzachi-community',
-    title: 'Tzachi (צח"י) Application',
-    category: 'Android',
-    categoryLabel: 'Published Native App',
-    description:
-      'Developed and successfully published a dedicated mobile application for the organization on the Google Play Store. Implemented time-based content flows by integrating external APIs for date-driven logic.',
-    detailedContent: {
-      overview:
-        'The Tzachi app serves as a centralized digital platform for community organization and engagement. It required integrating complex external APIs to calculate date-specific content (zmanim) and deploying it fully to production on the Play Store.',
-      architecture: [
-        'Native Java/Kotlin hybrid codebase',
-        'Material Design principles for an intuitive, accessible UI',
-        'RESTful API integration with JSON parsing for real-time external data',
-        'Time-based logic engine for precise zmanim calculation',
-      ],
-      features: [
-        'Live in production on the Google Play Store',
-        'Real-time content updates based on current date and geolocation',
-        'Community announcement and emergency messaging hub',
-        'Robust error handling for offline or poor network scenarios',
-      ],
-      screenshots: [],
-    },
-    screenshots: [],
-    tags: ['Android', 'Java/Kotlin', 'External APIs', 'Play Store'],
-    github: 'https://github.com/Jacobel640/TzachiApp',
-    demo: 'https://play.google.com/store/apps/details?id=com.tzachi',
-    isPrivate: false,
-    icon: Smartphone,
-  },
-  {
-    id: 'files-app',
-    title: 'Advanced File Manager',
-    category: 'Android',
-    categoryLabel: 'Native Utility App',
-    description:
-      'A comprehensive file management application for Android featuring a built-in storage analyzer, advanced search filtering, and robust local file operations.',
-    detailedContent: {
-      overview:
-        'This native Android application provides users with complete control over their local device storage. It was built to handle complex file operations efficiently, featuring a powerful storage analyzer, deep search capabilities with granular filters, and a seamless, intuitive UI for managing files and directories.',
-      architecture: [
-        'Native Android development utilizing modern Kotlin patterns',
-        'Jetpack Compose for building a dynamic, responsive user interface',
-        'Integration with Android Scoped Storage framework APIs',
-        'Coroutines for asynchronous, non-blocking file processing and storage analysis',
-      ],
-      features: [
-        'Deep storage analysis and capacity visualization',
-        'Advanced file search with custom granular filters',
-        'Multi-file selection with bulk actions (copy, move, delete)',
-        'Intuitive grid and list layout viewing modes',
-      ],
-      screenshots: [
-        '/screenshots/files-migration/main_screen.png',
-        '/screenshots/files-migration/file_explorer_grid.png',
-        '/screenshots/files-migration/file_explorer_row.png',
-        '/screenshots/files-migration/file_actions.png',
-        '/screenshots/files-migration/search_screen.png',
-        '/screenshots/files-migration/search_filters_1.png',
-        '/screenshots/files-migration/search_filters_2.png',
-        '/screenshots/files-migration/sort_options_sheet.png',
-        '/screenshots/files-migration/selected_file_details.png',
-        '/screenshots/files-migration/multi_selected_details.png',
-        '/screenshots/files-migration/last_files.png',
-        '/screenshots/files-migration/storage_analizer.png',
-        '/screenshots/files-migration/copy_navigation.png',
-      ],
-    },
-    screenshots: [
-      '/screenshots/files-migration/main_screen.png',
-      '/screenshots/files-migration/file_explorer_grid.png',
-      '/screenshots/files-migration/file_explorer_row.png',
-      '/screenshots/files-migration/file_actions.png',
-      '/screenshots/files-migration/search_screen.png',
-      '/screenshots/files-migration/search_filters_1.png',
-      '/screenshots/files-migration/search_filters_2.png',
-      '/screenshots/files-migration/sort_options_sheet.png',
-      '/screenshots/files-migration/selected_file_details.png',
-      '/screenshots/files-migration/multi_selected_details.png',
-      '/screenshots/files-migration/last_files.png',
-      '/screenshots/files-migration/storage_analizer.png',
-      '/screenshots/files-migration/copy_navigation.png',
-    ],
-    tags: ['Kotlin', 'Compose', 'Coroutines', 'Scoped Storage'],
-    isPrivate: true,
-    icon: Smartphone,
-  },
-  {
-    id: 'e-commerce-waba',
-    title: 'Minim4You Backend',
-    category: 'Backend',
-    categoryLabel: 'Automated E-Commerce & WABA',
-    description:
-      'Architected and deployed a backend service to automate end-to-end retail ordering and invoicing workflows. Transitioned messaging infrastructure to the official Meta WABA for enterprise reliability.',
-    detailedContent: {
-      overview:
-        'Minim4You required a highly reliable backend to sync a customer-facing Wix interface with real-time WhatsApp business messaging. This system acts as the central nervous system for retail ordering and invoicing.',
-      architecture: [
-        'Java Spring Boot microservice deployed on Heroku',
-        'Meta WhatsApp Business API (WABA) for official, reliable messaging',
-        'Wix REST APIs to synchronize CRM customer records and inventory',
-        'PostgreSQL database for transactional integrity',
-      ],
-      features: [
-        'Real-time order synchronization from web to WhatsApp',
-        'Automated invoice generation and PDF routing',
-        'Fault-tolerant webhook processors for message delivery receipts',
-      ],
-      screenshots: [],
-    },
-    screenshots: [],
-    tags: ['Spring Boot', 'PostgreSQL', 'Meta WABA', 'Wix APIs', 'Heroku'],
-    github: 'https://github.com/Jacobel640/Minim4You',
-    isPrivate: false,
-    icon: Server,
-  },
-  {
-    id: 'whatsapp-status',
-    title: 'WhatsApp Status Utility',
-    category: 'Android',
-    categoryLabel: 'Android Utility App',
-    description:
-      'Designed and built a specialized Android application utilizing Kotlin and Jetpack Compose to streamline the saving and sharing of WhatsApp statuses.',
-    detailedContent: {
-      overview:
-        'A lightweight, high-performance utility application that helps users manage, save, and share temporary media statuses from WhatsApp, built entirely with modern Android frameworks.',
-      architecture: [
-        '100% Kotlin codebase',
-        'Jetpack Compose for UI rendering',
-        'Android Scoped Storage and MediaStore integration for media management',
-        'Coroutines for async media processing',
-      ],
-      features: [
-        'Automatic detection of cached status media',
-        'One-click save to local gallery',
-        'In-app media viewer and sharing intents',
-      ],
-      screenshots: [],
-    },
-    screenshots: [],
-    tags: ['Kotlin', 'Compose', 'MediaStore API', 'Coroutines'],
-    github: 'https://github.com/Jacobel640/StatusSaver',
-    isPrivate: false,
-    icon: Smartphone,
-  },
-];
-
-export type FilterType = 'All' | 'Android' | 'Fullstack' | 'Backend';
+import { projects, thumbFor } from '../data/projects';
+import type { FilterType, Project, Screenshot } from '../data/projects';
 
 export const Projects: FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<Screenshot | null>(null);
 
-  // Prevent background scrolling when modal is open
+  // The card that opened the modal, so focus can be handed back on close.
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeProject = useCallback(() => {
+    setSelectedImage(null);
+    setSelectedProject(null);
+  }, []);
+
+  const openProject = useCallback((project: Project, trigger: HTMLElement | null) => {
+    lastFocusedRef.current = trigger;
+    setSelectedProject(project);
+  }, []);
+
+  // Prevent background scrolling while a modal or the lightbox is open.
+  // `removeProperty` rather than setting 'unset' — the shorthand would also
+  // clear the `overflow-x: hidden` that keeps the ambient glows from causing
+  // horizontal scroll.
   useEffect(() => {
     if (selectedProject || selectedImage) {
       document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.removeProperty('overflow');
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.removeProperty('overflow');
     };
   }, [selectedProject, selectedImage]);
+
+  // Escape closes the lightbox first, then the project modal.
+  useEffect(() => {
+    if (!selectedProject && !selectedImage) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      if (selectedImage) setSelectedImage(null);
+      else closeProject();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedProject, selectedImage, closeProject]);
+
+  // Move focus into the modal on open, and back to the originating card on close.
+  useEffect(() => {
+    if (selectedProject) {
+      closeButtonRef.current?.focus();
+    } else {
+      lastFocusedRef.current?.focus();
+      lastFocusedRef.current = null;
+    }
+  }, [selectedProject]);
 
   const filteredProjects =
     activeFilter === 'All'
@@ -295,6 +80,8 @@ export const Projects: FC = () => {
       : projects.filter((project) => project.category === activeFilter);
 
   const filterTabs: FilterType[] = ['All', 'Android', 'Fullstack', 'Backend'];
+
+  const modalShots = selectedProject?.detailedContent.screenshots ?? [];
 
   return (
     <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
@@ -342,15 +129,21 @@ export const Projects: FC = () => {
         viewport={{ once: true }}
         className="relative z-10 flex flex-wrap items-center justify-center gap-2 mb-14"
       >
-        <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl">
+        <div
+          role="tablist"
+          aria-label="Filter projects by category"
+          className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl"
+        >
           {filterTabs.map((tab) => {
             const isActive = activeFilter === tab;
             return (
               <button
                 key={tab}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveFilter(tab)}
-                className={`relative px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none ${
+                className={`relative px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   isActive
                     ? 'text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
@@ -386,8 +179,17 @@ export const Projects: FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ duration: 0.3 }}
-                onClick={() => setSelectedProject(project)}
-                className="group relative flex flex-col justify-between rounded-3xl bg-slate-900/50 hover:bg-slate-900/80 border border-white/[0.08] hover:border-white/[0.22] p-6 sm:p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 backdrop-blur-xl cursor-pointer overflow-hidden"
+                role="button"
+                tabIndex={0}
+                aria-label={`Open case study: ${project.title}`}
+                onClick={(e) => openProject(project, e.currentTarget as HTMLElement)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openProject(project, e.currentTarget as HTMLElement);
+                  }
+                }}
+                className="group relative flex flex-col justify-between rounded-3xl bg-slate-900/50 hover:bg-slate-900/80 border border-white/[0.08] hover:border-white/[0.22] p-6 sm:p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 backdrop-blur-xl cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 {/* Subtle top card glow */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -410,6 +212,7 @@ export const Projects: FC = () => {
                           href={project.github}
                           target="_blank"
                           rel="noopener noreferrer"
+                          aria-label={`${project.title} source code on GitHub`}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
                         >
                           <Github className="w-3 h-3" />
@@ -422,6 +225,7 @@ export const Projects: FC = () => {
                           href={project.demo}
                           target="_blank"
                           rel="noopener noreferrer"
+                          aria-label={`${project.title} live on Google Play`}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
@@ -478,9 +282,12 @@ export const Projects: FC = () => {
         {selectedProject && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xl overflow-y-auto"
-            onClick={() => setSelectedProject(null)}
+            onClick={closeProject}
           >
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-modal-title"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -498,7 +305,10 @@ export const Projects: FC = () => {
                     })()}
                   </div>
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    <h3
+                      id="project-modal-title"
+                      className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight"
+                    >
                       {selectedProject.title}
                     </h3>
                     <p className="text-blue-400 font-medium text-xs sm:text-sm mt-0.5">
@@ -508,8 +318,9 @@ export const Projects: FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setSelectedProject(null)}
-                  className="p-2.5 text-slate-400 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] rounded-2xl transition-colors focus:outline-none"
+                  ref={closeButtonRef}
+                  onClick={closeProject}
+                  className="p-2.5 text-slate-400 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] rounded-2xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                   aria-label="Close project modal"
                 >
                   <X className="w-5 h-5" />
@@ -589,47 +400,52 @@ export const Projects: FC = () => {
                       <ImageIcon className="w-4 h-4 text-pink-400" />
                       <span>Screenshots &amp; Visual Artifacts</span>
                     </span>
-                    {(selectedProject.detailedContent?.screenshots && selectedProject.detailedContent.screenshots.length > 0) ||
-                    (selectedProject.screenshots && selectedProject.screenshots.length > 0) ? (
+                    {modalShots.length > 0 && (
                       <span className="text-xs font-normal text-slate-400">
                         Click any image to zoom
                       </span>
-                    ) : null}
+                    )}
                   </h4>
 
-                  {(selectedProject.detailedContent?.screenshots &&
-                    selectedProject.detailedContent.screenshots.length > 0) ||
-                  (selectedProject.screenshots && selectedProject.screenshots.length > 0) ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {(selectedProject.detailedContent?.screenshots || selectedProject.screenshots || []).map(
-                        (imgSrc, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedImage(imgSrc)}
-                            className="group relative rounded-2xl overflow-hidden bg-slate-950/70 border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer aspect-video flex items-center justify-center"
+                  {modalShots.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {modalShots.map((shot) => (
+                        <figure key={shot.src} className="m-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedImage(shot)}
+                            aria-label={`Zoom: ${shot.caption}`}
+                            className="group relative block w-full rounded-2xl overflow-hidden bg-slate-950/70 border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer aspect-[9/19.5] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                           >
                             <img
-                              src={imgSrc}
-                              alt={`${selectedProject.title} screenshot ${idx + 1}`}
+                              src={thumbFor(shot.src)}
+                              alt={`${selectedProject.title} — ${shot.caption}`}
                               loading="lazy"
                               decoding="async"
-                              className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                              width={432}
+                              height={936}
+                              onError={(e) => {
+                                // Fall back to the original PNG if the WebP thumb is missing.
+                                const img = e.currentTarget;
+                                if (img.src !== shot.src) img.src = shot.src;
+                              }}
+                              className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-between p-3.5">
-                              <span className="text-xs text-white font-medium truncate max-w-[80%]">
-                                {imgSrc.split('/').pop()?.replace('.png', '').replace(/[-_]/g, ' ')}
-                              </span>
-                              <div className="p-1.5 rounded-lg bg-blue-600/80 text-white">
+                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
+                              <span className="p-1.5 rounded-lg bg-blue-600/90 text-white">
                                 <ZoomIn className="w-3.5 h-3.5" />
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      )}
+                              </span>
+                            </span>
+                          </button>
+                          <figcaption className="mt-2 text-[11px] leading-snug text-slate-400 text-center px-1">
+                            {shot.caption}
+                          </figcaption>
+                        </figure>
+                      ))}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-white/[0.08] bg-slate-950/40 p-8 text-center backdrop-blur-sm">
-                      <ImageIcon className="w-10 h-10 mx-auto text-slate-600 mb-3 opacity-60" />
+                      <ImageIcon className="w-10 h-10 mx-auto text-slate-500 mb-3 opacity-70" />
                       <p className="text-sm font-medium text-slate-400">
                         No screenshots available to display
                       </p>
@@ -661,7 +477,7 @@ export const Projects: FC = () => {
                         href={selectedProject.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
+                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                       >
                         <Github className="w-4 h-4" />
                         <span>Source Code</span>
@@ -673,7 +489,7 @@ export const Projects: FC = () => {
                         href={selectedProject.demo}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
+                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
                       >
                         <ExternalLink className="w-4 h-4" />
                         <span>Live Demo</span>
@@ -695,6 +511,9 @@ export const Projects: FC = () => {
             onClick={() => setSelectedImage(null)}
           >
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label={selectedImage.caption}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -704,20 +523,21 @@ export const Projects: FC = () => {
             >
               <button
                 onClick={() => setSelectedImage(null)}
-                className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white bg-white/[0.1] hover:bg-white/[0.2] border border-white/[0.15] rounded-full transition-colors focus:outline-none"
+                autoFocus
+                className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white bg-white/[0.1] hover:bg-white/[0.2] border border-white/[0.15] rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                 aria-label="Close image preview"
               >
                 <X className="w-5 h-5" />
               </button>
 
               <img
-                src={selectedImage}
-                alt="Screenshot Preview"
+                src={selectedImage.src}
+                alt={selectedImage.caption}
                 className="max-w-full max-h-[80vh] object-contain rounded-2xl border border-white/[0.15] shadow-2xl"
               />
 
               <p className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide">
-                {selectedImage.split('/').pop()?.replace('.png', '').replace(/[-_]/g, ' ')}
+                {selectedImage.caption}
               </p>
             </motion.div>
           </div>
