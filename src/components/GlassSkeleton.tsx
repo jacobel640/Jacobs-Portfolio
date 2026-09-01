@@ -1,13 +1,8 @@
 import { FC } from 'react';
 
-interface SkeletonProps {
-  height?: string;
-  type?: 'skills' | 'projects' | 'contact' | 'default';
-}
-
 export const SkillsSkeleton: FC = () => {
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
+    <section id="skills" aria-busy="true" aria-label="Loading skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
       {/* Header Skeleton */}
       <div className="text-center space-y-4 mb-16 flex flex-col items-center">
         <div className="w-36 h-7 rounded-full bg-slate-800/80 border border-slate-700/40" />
@@ -54,7 +49,7 @@ export const SkillsSkeleton: FC = () => {
 
 export const ProjectsSkeleton: FC = () => {
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
+    <section id="projects" aria-busy="true" aria-label="Loading projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
       {/* Header Skeleton */}
       <div className="text-center space-y-4 mb-16 flex flex-col items-center">
         <div className="w-36 h-7 rounded-full bg-slate-800/80 border border-slate-700/40" />
@@ -108,7 +103,7 @@ export const ProjectsSkeleton: FC = () => {
 
 export const ContactSkeleton: FC = () => {
   return (
-    <footer className="relative bg-[#030712] overflow-hidden pt-20 pb-12 animate-pulse">
+    <footer id="contact" aria-busy="true" aria-label="Loading contact" className="relative bg-[#030712] overflow-hidden pt-20 pb-12 animate-pulse">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
         <div className="w-44 h-7 rounded-full bg-slate-800/80 mb-6" />
         <div className="w-72 sm:w-[500px] h-12 rounded-2xl bg-slate-800/90 mb-6" />
@@ -139,21 +134,3 @@ export const ContactSkeleton: FC = () => {
     </footer>
   );
 };
-
-export const SectionSkeleton: FC<SkeletonProps> = ({ height = 'min-h-[400px]', type = 'default' }) => {
-  if (type === 'skills') return <SkillsSkeleton />;
-  if (type === 'projects') return <ProjectsSkeleton />;
-  if (type === 'contact') return <ContactSkeleton />;
-
-  return (
-    <div
-      className={`w-full max-w-7xl mx-auto my-12 p-8 sm:p-12 rounded-3xl backdrop-blur-xl bg-slate-900/40 border border-white/[0.08] shadow-2xl animate-pulse ${height} flex flex-col justify-center items-center`}
-    >
-      <div className="w-1/3 h-8 bg-slate-800/70 rounded-2xl mb-6" />
-      <div className="w-2/3 max-w-lg h-4 bg-slate-800/50 rounded-xl mb-3" />
-      <div className="w-1/2 max-w-md h-4 bg-slate-800/40 rounded-xl" />
-    </div>
-  );
-};
-
-export default SectionSkeleton;
