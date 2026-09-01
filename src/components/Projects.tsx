@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, FC } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Folder,
@@ -25,6 +25,37 @@ export const Projects: FC = () => {
   // The card that opened the modal, so focus can be handed back on close.
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Switching categories changes how many cards the grid holds, which changes
+  // the page height and slides everything under the pointer. Pin the filter
+  // bar — the control that was just clicked — to where it was.
+  const filterBarRef = useRef<HTMLDivElement | null>(null);
+  const pinnedBarTopRef = useRef<number | null>(null);
+
+  const selectFilter = useCallback((tab: FilterType) => {
+    pinnedBarTopRef.current = filterBarRef.current?.getBoundingClientRect().top ?? null;
+    setActiveFilter(tab);
+  }, []);
+
+  useLayoutEffect(() => {
+    const target = pinnedBarTopRef.current;
+    if (target === null) return;
+    pinnedBarTopRef.current = null;
+
+    // The grid animates its reflow, so hold the bar in place across the whole
+    // transition rather than correcting once.
+    let frame = 0;
+    const deadline = performance.now() + 600;
+    const hold = () => {
+      const bar = filterBarRef.current;
+      if (!bar) return;
+      const drift = bar.getBoundingClientRect().top - target;
+      if (Math.abs(drift) > 0.5) window.scrollBy(0, drift);
+      if (performance.now() < deadline) frame = requestAnimationFrame(hold);
+    };
+    frame = requestAnimationFrame(hold);
+    return () => cancelAnimationFrame(frame);
+  }, [activeFilter]);
 
   const closeProject = useCallback(() => {
     setSelectedImage(null);
@@ -86,7 +117,7 @@ export const Projects: FC = () => {
   return (
     <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
       {/* Ambient background glow */}
-      <div className="absolute top-1/3 right-1/4 w-[32rem] h-[32rem] bg-blue-900/10 rounded-full blur-[130px] pointer-events-none" />
+      <div className="ambient-glow absolute top-1/3 right-1/4 w-[32rem] h-[32rem] bg-blue-900/10 rounded-full blur-[130px] pointer-events-none" />
 
       {/* Section Header */}
       <div className="relative z-10 text-center mb-14">
@@ -130,6 +161,7 @@ export const Projects: FC = () => {
         className="relative z-10 flex flex-wrap items-center justify-center gap-2 mb-14"
       >
         <div
+          ref={filterBarRef}
           role="group"
           aria-label="Filter projects by category"
           className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl"
@@ -141,7 +173,7 @@ export const Projects: FC = () => {
                 key={tab}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => setActiveFilter(tab)}
+                onClick={() => selectFilter(tab)}
                 className={`relative px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                   isActive
                     ? 'text-white'

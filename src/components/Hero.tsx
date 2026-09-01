@@ -32,10 +32,10 @@ export const Hero: FC = () => {
       className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-hidden pt-28 pb-16"
     >
       {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-80 h-80 bg-purple-600/12 rounded-full blur-[110px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-cyan-500/10 rounded-full blur-[90px] pointer-events-none" />
+      <div className="ambient-glow absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="ambient-glow absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-[100px] pointer-events-none" />
+      <div className="ambient-glow absolute top-1/2 right-1/4 -translate-y-1/2 w-80 h-80 bg-purple-600/12 rounded-full blur-[110px] pointer-events-none" />
+      <div className="ambient-glow absolute bottom-1/4 left-1/3 w-72 h-72 bg-cyan-500/10 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Grid Overlay with Radial Fade */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
