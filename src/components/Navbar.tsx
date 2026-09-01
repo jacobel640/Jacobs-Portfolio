@@ -62,9 +62,12 @@ export const Navbar: FC = () => {
     const element = document.getElementById(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+      // Reflect the section in the URL so it can be copied and shared, without
+      // adding a history entry for every click.
+      window.history.replaceState(null, '', href);
     } else {
-      // The lazy chunk for this section has not mounted yet; let the browser
-      // resolve the anchor once it does instead of swallowing the click.
+      // The lazy chunk for this section has not mounted yet; setting the hash
+      // hands off to the hashchange listener, which waits for it to appear.
       window.location.hash = href;
     }
   };

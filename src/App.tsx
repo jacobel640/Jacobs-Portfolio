@@ -1,14 +1,19 @@
 import { FC, lazy, Suspense } from 'react';
+import { MotionConfig } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import { SkillsSkeleton, ProjectsSkeleton, ContactSkeleton } from './components/GlassSkeleton';
+import { useHashScroll } from './hooks/useHashScroll';
 
 const Skills = lazy(() => import('./components/Skills'));
 const Projects = lazy(() => import('./components/Projects'));
 const Contact = lazy(() => import('./components/Contact'));
 
 export const App: FC = () => {
+  useHashScroll();
+
   return (
+    <MotionConfig reducedMotion="user">
     <div className="relative min-h-screen bg-[#030712] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
       {/* Global Ambient Background Lights */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -33,6 +38,7 @@ export const App: FC = () => {
         <Contact />
       </Suspense>
     </div>
+    </MotionConfig>
   );
 };
 
