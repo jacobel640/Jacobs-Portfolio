@@ -1,16 +1,47 @@
-import { useState, FC } from 'react';
+import { useState, useEffect, useRef, FC } from 'react';
 import { motion } from 'framer-motion';
 import { Linkedin, Github, Mail, ArrowUpRight, Heart, Copy, Check, ArrowUp } from 'lucide-react';
 
+const EMAIL = 'Jacobel640@gmail.com';
+const GITHUB_USER = 'jacobel640';
+
 export const Contact: FC = () => {
   const currentYear = new Date().getFullYear();
-  const [copied, setCopied] = useState<boolean>(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
-  const handleCopyEmail = (e: React.MouseEvent) => {
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
+  const handleCopyEmail = async (e: React.MouseEvent) => {
     e.preventDefault();
-    navigator.clipboard.writeText('Jacobel640@gmail.com');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    try {
+      // clipboard.writeText is only available in a secure context; fall back to
+      // a hidden textarea so the button never silently lies about copying.
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(EMAIL);
+      } else {
+        const field = document.createElement('textarea');
+        field.value = EMAIL;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(field);
+        if (!ok) throw new Error('copy command rejected');
+      }
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopyState('idle'), 2500);
   };
 
   const scrollToTop = () => {
@@ -28,17 +59,17 @@ export const Contact: FC = () => {
     },
     {
       name: 'GitHub',
-      url: 'https://github.com/jacob-elcharar',
+      url: `https://github.com/${GITHUB_USER}`,
       icon: Github,
-      label: 'github.com/jacob-elcharar',
+      label: `github.com/${GITHUB_USER}`,
       actionText: 'Follow',
       glowColor: 'hover:border-purple-500/40 hover:shadow-purple-500/10 text-purple-400',
     },
     {
       name: 'Email',
-      url: 'mailto:Jacobel640@gmail.com',
+      url: `mailto:${EMAIL}`,
       icon: Mail,
-      label: 'Jacobel640@gmail.com',
+      label: EMAIL,
       actionText: 'Send Email',
       glowColor: 'hover:border-emerald-500/40 hover:shadow-emerald-500/10 text-emerald-400',
     },
@@ -107,18 +138,27 @@ export const Contact: FC = () => {
           {/* Quick Copy Email Action */}
           <div className="flex items-center gap-3 bg-slate-900/60 border border-white/[0.08] rounded-2xl px-5 py-2.5 backdrop-blur-xl shadow-inner">
             <Mail className="w-4 h-4 text-slate-400" />
-            <span className="text-xs sm:text-sm text-slate-300 font-mono">Jacobel640@gmail.com</span>
+            <span className="text-xs sm:text-sm text-slate-300 font-mono">{EMAIL}</span>
             <button
               onClick={handleCopyEmail}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/[0.08] transition-colors"
+              aria-live="polite"
+              aria-label="Copy email address"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/[0.08] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
             >
-              {copied ? (
+              {copyState === 'copied' && (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-emerald-400">Copied!</span>
                 </>
-              ) : (
+              )}
+              {copyState === 'failed' && (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-amber-400">Select to copy</span>
+                </>
+              )}
+              {copyState === 'idle' && (
                 <>
                   <Copy className="w-3.5 h-3.5 text-slate-400" />
                   <span>Copy</span>
