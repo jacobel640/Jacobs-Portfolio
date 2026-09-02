@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Server,
 } from 'lucide-react';
+import { RichText } from './RichText';
 import { projects, thumbFor } from '../data/projects';
 import type { FilterType, Project, Screenshot } from '../data/projects';
 
@@ -337,9 +338,22 @@ export const Projects: FC = () => {
                     <Folder className="w-4 h-4 text-blue-400" />
                     <span>Project Overview</span>
                   </h4>
-                  <p className="text-slate-300 text-sm sm:text-base leading-relaxed bg-white/[0.02] p-5 rounded-2xl border border-white/[0.06]">
-                    {selectedProject.detailedContent.overview}
-                  </p>
+                  <div className="space-y-4 text-slate-300 text-sm sm:text-base leading-relaxed bg-white/[0.02] p-5 sm:p-6 rounded-2xl border border-white/[0.06]">
+                    {selectedProject.detailedContent.overview.map((paragraph, idx) => (
+                      // The opening paragraph reads as a lead: slightly larger and
+                      // brighter, so the eye has an obvious place to start.
+                      <p
+                        key={idx}
+                        className={
+                          idx === 0
+                            ? 'text-base sm:text-lg text-slate-100 leading-relaxed'
+                            : undefined
+                        }
+                      >
+                        <RichText>{paragraph}</RichText>
+                      </p>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Architecture & Features Grid */}
