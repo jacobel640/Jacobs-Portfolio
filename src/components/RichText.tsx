@@ -9,18 +9,35 @@ import { FC, Fragment, ReactNode } from 'react';
  *
  * Deliberately not a Markdown parser — the copy in `data/projects.ts` is
  * trusted, hand-written content, so a split on the three delimiters is enough
- * and avoids pulling a renderer into the bundle. The bold alternative is
- * listed first so `**x**` never matches as an empty italic pair.
+ * and avoids pulling a renderer into the bundle.
+ *
+ * Both asterisk forms require a non-space character immediately inside each
+ * delimiter, the same rule Markdown uses. Without it, ordinary prose gets
+ * eaten: "3 * 4 * 5" would tokenise as an italic " 4 " and lose its
+ * asterisks. Bold is listed first so `**x**` never matches as an italic pair.
  */
-const TOKEN = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+const TOKEN = /(\*\*[^\s*](?:[^*]*[^\s*])?\*\*|\*[^\s*](?:[^*]*[^\s*])?\*|`[^`]+`)/g;
 
 export const RichText: FC<{ children: string }> = ({ children }) => {
-  const parts = children.split(TOKEN).filter(Boolean);
+  // `split` with a capture group interleaves the two kinds of part: even
+  // indices are always literal text, odd indices are always a matched token.
+  // Classifying on that parity — rather than on how a part happens to start
+  // and end — is what keeps an unpaired delimiter rendering as itself. Sniffing
+  // the ends instead would read a stray "**" between two tokens as a bold pair
+  // and swallow it into an empty <strong>. Empty strings are skipped in place
+  // rather than filtered out, since filtering would break the parity.
+  const parts = children.split(TOKEN);
 
   return (
     <>
       {parts.map((part, idx): ReactNode => {
-        if (part.startsWith('**') && part.endsWith('**')) {
+        if (!part) return null;
+
+        if (idx % 2 === 0) {
+          return <Fragment key={idx}>{part}</Fragment>;
+        }
+
+        if (part.startsWith('**')) {
           return (
             <strong key={idx} className="font-semibold text-white">
               {part.slice(2, -2)}
@@ -28,15 +45,7 @@ export const RichText: FC<{ children: string }> = ({ children }) => {
           );
         }
 
-        if (part.startsWith('*') && part.endsWith('*')) {
-          return (
-            <em key={idx} className="italic text-slate-200">
-              {part.slice(1, -1)}
-            </em>
-          );
-        }
-
-        if (part.startsWith('`') && part.endsWith('`')) {
+        if (part.startsWith('`')) {
           return (
             <code
               key={idx}
@@ -47,7 +56,11 @@ export const RichText: FC<{ children: string }> = ({ children }) => {
           );
         }
 
-        return <Fragment key={idx}>{part}</Fragment>;
+        return (
+          <em key={idx} className="italic text-slate-200">
+            {part.slice(1, -1)}
+          </em>
+        );
       })}
     </>
   );
