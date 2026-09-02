@@ -2,7 +2,7 @@
 
 Personal portfolio site for Jacob Elcharar, Android Software Engineer & Fullstack Developer.
 
-**Live:** https://jacobs-glassmorphism-portfolio.netlify.app
+**Live:** https://jacobelcharar.dev
 
 ## Stack
 
