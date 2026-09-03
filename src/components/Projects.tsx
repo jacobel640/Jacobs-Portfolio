@@ -7,8 +7,8 @@ import {
   useCallback,
   FC,
 } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import type { PanInfo, Variants } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate } from 'framer-motion';
+import type { AnimationPlaybackControls, PanInfo } from 'framer-motion';
 import {
   Folder,
   Github,
@@ -28,25 +28,125 @@ import {
 } from 'lucide-react';
 import { RichText } from './RichText';
 import { projects, thumbFor } from '../data/projects';
-import type { FilterType, Project } from '../data/projects';
+import type { FilterType, Project, Screenshot } from '../data/projects';
 
-/** How far a horizontal drag has to travel — distance plus a slice of its
- *  throw velocity — before it counts as a swipe rather than a stray touch. */
-const SWIPE_THRESHOLD_PX = 55;
+/** A swipe commits once it has actually carried the image this much of its own
+ *  width — a deliberate, full gesture rather than a nudge. */
+const SWIPE_DISTANCE_RATIO = 0.4;
 
-/** The outgoing image leaves the way the incoming one arrives from. */
-const slideVariants: Variants = {
-  enter: (direction: number) => ({ x: direction >= 0 ? '100%' : '-100%', opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction >= 0 ? '-100%' : '100%', opacity: 0 }),
-};
+/**
+ * How far ahead a release is credited for the speed it still carries. A flick
+ * is charged the distance it would have covered had the finger kept going, so
+ * it clears the same gate as a full drag without the travel.
+ *
+ * Deliberately one rule rather than a separate velocity threshold. A hard
+ * velocity gate has to sit at some particular number, and if pointer velocity
+ * reads lower than that number on a given device the flick shortcut silently
+ * stops working. Folding it into the distance instead degrades gracefully:
+ * under-read the velocity and this falls back toward the plain distance rule,
+ * which needs no calibration at all.
+ */
+const FLICK_LOOKAHEAD_S = 0.2;
 
-/** Same transition without the travel, for visitors who ask for reduced motion. */
-const fadeVariants: Variants = {
-  enter: { opacity: 0 },
-  center: { opacity: 1 },
-  exit: { opacity: 0 },
-};
+/** Floor under the credit: a press that barely moved is not a flick, however
+ *  sharply the pointer was lifted. Proportional, like the distance gate, so it
+ *  means the same gesture on a phone as on a desktop. */
+const MIN_TRAVEL_RATIO = 0.04;
+
+/**
+ * What a released drag means: -1 for the previous image, 1 for the next, 0 to
+ * spring back where it was.
+ *
+ * Pure and separate from the component so the rule can be reasoned about, and
+ * checked, on its own — synthetic pointer events cannot reproduce the timing of
+ * a real flick, so the arithmetic is worth being able to test directly.
+ */
+function resolveSwipe(offsetX: number, velocityX: number, width: number): -1 | 0 | 1 {
+  if (!width) return 0;
+
+  const travelled = Math.abs(offsetX);
+  if (travelled < width * MIN_TRAVEL_RATIO) return 0;
+
+  // The distance the gesture actually covered, plus the distance its release
+  // speed would have carried it. The projection only counts when it agrees with
+  // where the gesture ended up: dragging one way and then whipping back toward
+  // the middle is someone undoing the swipe, not asking for the image on the
+  // other side.
+  const projected = offsetX + velocityX * FLICK_LOOKAHEAD_S;
+  const carried =
+    Math.sign(projected) === Math.sign(offsetX) ? Math.abs(projected) : travelled;
+
+  if (carried < width * SWIPE_DISTANCE_RATIO) return 0;
+  return offsetX < 0 ? 1 : -1;
+}
+
+/** Carries the track home, whether from a released finger or an arrow press.
+ *  A spring rather than a fixed duration: the settle scales with how far the
+ *  image still has to go. */
+const SETTLE_SPRING = { type: 'spring', stiffness: 300, damping: 34, mass: 0.85 } as const;
+
+interface LightboxPaneProps {
+  shot: Screenshot;
+  /** Position in the track: -1 previous, 0 current, 1 next. */
+  slot: -1 | 0 | 1;
+  ready: boolean;
+  failed: boolean;
+  onLoaded: (src: string) => void;
+  onFailed: (src: string) => void;
+}
+
+/**
+ * One screenshot in the swipe track. The neighbours are mounted and painted
+ * alongside the current one — that is what lets a drag pull the next image in
+ * from the edge rather than play an animation once the finger is already gone.
+ */
+const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoaded, onFailed }) => (
+  <div
+    className={`absolute inset-0 ${
+      slot === -1 ? '-translate-x-full' : slot === 1 ? 'translate-x-full' : ''
+    }`}
+    aria-hidden={slot === 0 ? undefined : 'true'}
+  >
+    {/* The grid already fetched the thumbnail, so it paints immediately and
+        holds the frame at the right size while the full-resolution PNG
+        arrives — rather than an empty box with the close button floating in
+        the middle of it. */}
+    <img
+      src={thumbFor(shot.src)}
+      alt={failed && slot === 0 ? shot.caption : ''}
+      aria-hidden={failed && slot === 0 ? undefined : 'true'}
+      draggable={false}
+      className={`absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-300 ${
+        failed ? '' : 'blur-[3px] scale-105'
+      } ${ready ? 'opacity-0' : 'opacity-100'}`}
+    />
+
+    {!ready && !failed && (
+      <span className="absolute inset-0 flex items-center justify-center" role="status">
+        <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
+        <span className="sr-only">Loading full-resolution screenshot</span>
+      </span>
+    )}
+
+    <img
+      src={shot.src}
+      alt={slot === 0 ? shot.caption : ''}
+      draggable={false}
+      ref={(node) => {
+        // A cached image can already be complete before onLoad binds — and so
+        // can a failed one, which only `naturalWidth` tells apart.
+        if (!node?.complete) return;
+        if (node.naturalWidth > 0) onLoaded(shot.src);
+        else onFailed(shot.src);
+      }}
+      onLoad={() => onLoaded(shot.src)}
+      onError={() => onFailed(shot.src)}
+      className={`relative w-full h-full object-cover select-none transition-opacity duration-300 ${
+        ready ? 'opacity-100' : 'opacity-0'
+      }`}
+    />
+  </div>
+);
 
 export const Projects: FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -54,9 +154,13 @@ export const Projects: FC = () => {
   // The lightbox tracks a position in the project's screenshot list rather than
   // a single shot, so it can walk to the next or previous one.
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  // +1 when moving forwards, -1 backwards: it decides which edge the incoming
-  // image slides in from.
-  const [slideDirection, setSlideDirection] = useState(0);
+  // True from the moment a swipe engages until the finger lifts, so the arrows
+  // can get out of the way of the gesture.
+  const [isSwiping, setIsSwiping] = useState(false);
+  // The frame's own width, which is both the drag limit and the distance one
+  // step of the track covers. Measured rather than assumed: it changes with the
+  // viewport.
+  const [frameWidth, setFrameWidth] = useState(0);
   // Full-resolution sources that have finished decoding, and those that could
   // not be fetched. Keyed by src rather than a single boolean so the outgoing
   // image keeps its own state mid-swipe, and so stepping back to an image
@@ -65,6 +169,18 @@ export const Projects: FC = () => {
   const [failedSrcs, setFailedSrcs] = useState<string[]>([]);
 
   const reduceMotion = useReducedMotion();
+
+  // Horizontal offset of the whole three-pane track. The drag writes to it
+  // directly, so the image tracks the finger one-to-one instead of animating
+  // once the gesture is already over.
+  const trackX = useMotionValue(0);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const trackAnimationRef = useRef<AnimationPlaybackControls | null>(null);
+  // Where the track has to be re-pinned the instant the index changes, so the
+  // pane that slid into view keeps the exact position it already had, and the
+  // speed the finger was carrying when it let go.
+  const pendingTrackXRef = useRef<number | null>(null);
+  const pendingVelocityRef = useRef(0);
 
   // Set while a lightbox swipe is in flight. A drag that travels past the edge
   // of the image releases the pointer over the backdrop, and the browser then
@@ -170,6 +286,21 @@ export const Projects: FC = () => {
   const shotCount = modalShots.length;
   const selectedImage = selectedIndex === null ? null : modalShots[selectedIndex] ?? null;
   const canNavigate = shotCount > 1;
+  const lightboxOpen = selectedImage !== null;
+
+  // The neighbours either side of the current shot, which the track paints so a
+  // drag has something real to pull into view. They are mounted rather than
+  // merely prefetched, which is also what warms them.
+  const trackPanes: { shot: Screenshot; slot: -1 | 0 | 1 }[] =
+    selectedIndex === null || !selectedImage
+      ? []
+      : canNavigate
+        ? [
+            { shot: modalShots[(selectedIndex - 1 + shotCount) % shotCount], slot: -1 },
+            { shot: selectedImage, slot: 0 },
+            { shot: modalShots[(selectedIndex + 1) % shotCount], slot: 1 },
+          ]
+        : [{ shot: selectedImage, slot: 0 }];
 
   // These belong to one project's gallery; drop them with the project.
   useEffect(() => {
@@ -186,7 +317,6 @@ export const Projects: FC = () => {
   }, []);
 
   const openImage = useCallback((index: number) => {
-    setSlideDirection(0);
     setSelectedIndex(index);
   }, []);
 
@@ -194,17 +324,87 @@ export const Projects: FC = () => {
     setSelectedIndex(null);
   }, []);
 
-  /** Steps the lightbox by `delta`, wrapping around at either end. */
+  // One step of the track is exactly one frame width, so the width has to be
+  // known before any of the gesture maths means anything.
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const measure = () => setFrameWidth(frame.offsetWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [lightboxOpen]);
+
+  const animateTrackTo = useCallback(
+    (target: number) => {
+      trackAnimationRef.current?.stop();
+      if (reduceMotion) {
+        trackX.set(target);
+        return;
+      }
+      trackAnimationRef.current = animate(trackX, target, SETTLE_SPRING);
+    },
+    [reduceMotion, trackX],
+  );
+
+  /**
+   * Steps the lightbox by `delta`, wrapping around at either end.
+   *
+   * The index changes first and the track is re-pinned in the same commit, so
+   * the pane that was the neighbour becomes the current one without moving a
+   * pixel; only then does it travel home. Animating first and swapping
+   * afterwards would leave a frame where the two disagree.
+   */
   const goToImage = useCallback(
-    (delta: number) => {
+    (delta: number, releaseVelocity = 0) => {
       if (shotCount < 2) return;
-      setSlideDirection(delta >= 0 ? 1 : -1);
+      const step = delta >= 0 ? 1 : -1;
+      const width = frameRef.current?.offsetWidth ?? 0;
+      pendingTrackXRef.current = width ? trackX.get() + step * width : 0;
+      pendingVelocityRef.current = releaseVelocity;
       setSelectedIndex((current) =>
-        current === null ? current : (current + delta + shotCount) % shotCount,
+        current === null ? current : (current + step + shotCount) % shotCount,
       );
     },
-    [shotCount],
+    [shotCount, trackX],
   );
+
+  // Re-pin and release the track. Runs before paint, so the swap above is never
+  // visible as a jump.
+  useLayoutEffect(() => {
+    const pinned = pendingTrackXRef.current;
+    const releaseVelocity = pendingVelocityRef.current;
+    pendingTrackXRef.current = null;
+    pendingVelocityRef.current = 0;
+    trackAnimationRef.current?.stop();
+
+    if (pinned === null) {
+      // A freshly opened lightbox starts centred.
+      trackX.jump(0);
+      return;
+    }
+
+    // `jump` rather than `set`: re-pinning moves the track a whole frame width
+    // in no time at all, and `set` records that as the value's velocity. The
+    // settle below would then inherit a speed of thousands of pixels a second
+    // and hurl the track several widths away before springing back past centre
+    // — the flick away and back that shows up at the end of every transition.
+    // `jump` clears the velocity, and the real one is handed over explicitly.
+    trackX.jump(pinned);
+    if (reduceMotion || pinned === 0) {
+      trackX.jump(0);
+      return;
+    }
+    trackAnimationRef.current = animate(trackX, 0, {
+      ...SETTLE_SPRING,
+      // The finger was already moving this way; the settle carries on from it
+      // rather than restarting from rest.
+      velocity: releaseVelocity,
+    });
+  }, [selectedIndex, reduceMotion, trackX]);
+
+  useEffect(() => () => trackAnimationRef.current?.stop(), []);
 
   const dismissLightbox = useCallback(() => {
     // Swallow the click a completed swipe leaves behind, once.
@@ -215,31 +415,31 @@ export const Projects: FC = () => {
     closeLightbox();
   }, [closeLightbox]);
 
+  const handleDragStart = useCallback(() => {
+    trackAnimationRef.current?.stop();
+    swipedRef.current = true;
+    setIsSwiping(true);
+  }, []);
+
   const handleDragEnd = useCallback(
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      // Velocity carries the intent of a short, fast flick that never travels
-      // far enough on distance alone.
-      const throw_ = info.offset.x + info.velocity.x * 0.2;
-      if (throw_ <= -SWIPE_THRESHOLD_PX) goToImage(1);
-      else if (throw_ >= SWIPE_THRESHOLD_PX) goToImage(-1);
-    },
-    [goToImage],
-  );
+      setIsSwiping(false);
 
-  // Keep the neighbours warm so a swipe lands on a decoded image rather than a
-  // spinner.
-  useEffect(() => {
-    if (selectedIndex === null || shotCount < 2) return;
-    const neighbours = [
-      modalShots[(selectedIndex + 1) % shotCount],
-      modalShots[(selectedIndex - 1 + shotCount) % shotCount],
-    ];
-    neighbours.forEach((shot) => {
-      if (!shot) return;
-      const preload = new Image();
-      preload.src = shot.src;
-    });
-  }, [selectedIndex, shotCount, modalShots]);
+      const step = resolveSwipe(
+        info.offset.x,
+        info.velocity.x,
+        frameRef.current?.offsetWidth ?? 0,
+      );
+      if (step !== 0) {
+        goToImage(step, info.velocity.x);
+        return;
+      }
+
+      // Not enough of a gesture — let the image fall back where it was.
+      animateTrackTo(0);
+    },
+    [animateTrackTo, goToImage],
+  );
 
   const closeProject = useCallback(() => {
     setSelectedIndex(null);
@@ -789,97 +989,56 @@ export const Projects: FC = () => {
                     type="button"
                     onClick={() => goToImage(-1)}
                     aria-label="Previous screenshot"
-                    className="shrink-0 p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white bg-white/[0.08] hover:bg-white/[0.18] border border-white/[0.12] opacity-60 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                    tabIndex={isSwiping ? -1 : undefined}
+                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
+                      isSwiping
+                        ? 'opacity-0 pointer-events-none'
+                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
+                    }`}
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                 )}
 
                 <div
+                  ref={frameRef}
                   className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950 ${
-                    canNavigate ? 'max-h-[calc((100vw-7rem)*20/9)]' : 'max-w-full'
+                    canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full'
                   }`}
                 >
-                <AnimatePresence initial={false} custom={slideDirection}>
-                  {(() => {
-                    const shot = selectedImage;
-                    const ready = loadedSrcs.includes(shot.src);
-                    // A full-resolution PNG that will not load leaves the
-                    // thumbnail standing in for it — sharp rather than blurred,
-                    // so it reads as the picture instead of a stalled preview.
-                    const failed = !ready && failedSrcs.includes(shot.src);
-                    return (
-                      <motion.div
-                        key={shot.src}
-                        custom={slideDirection}
-                        variants={reduceMotion ? fadeVariants : slideVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{
-                          type: 'tween',
-                          ease: [0.22, 1, 0.36, 1],
-                          duration: reduceMotion ? 0.15 : 0.32,
-                        }}
-                        drag={canNavigate ? 'x' : false}
-                        dragDirectionLock
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.16}
-                        dragMomentum={false}
-                        onDragStart={() => {
-                          swipedRef.current = true;
-                        }}
-                        onDragEnd={handleDragEnd}
-                        className={`absolute inset-0 ${
-                          canNavigate ? 'cursor-grab active:cursor-grabbing' : ''
-                        }`}
-                      >
-                        {/* The grid already fetched the thumbnail, so it paints
-                            immediately and holds the frame at the right size while
-                            the full-resolution PNG arrives — rather than an empty
-                            box with the close button floating in the middle of it. */}
-                        <img
-                          src={thumbFor(shot.src)}
-                          alt={failed ? shot.caption : ''}
-                          aria-hidden={failed ? undefined : 'true'}
-                          draggable={false}
-                          className={`absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-300 ${
-                            failed ? '' : 'blur-[3px] scale-105'
-                          } ${ready ? 'opacity-0' : 'opacity-100'}`}
-                        />
-
-                        {!ready && !failed && (
-                          <span
-                            className="absolute inset-0 flex items-center justify-center"
-                            role="status"
-                          >
-                            <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
-                            <span className="sr-only">Loading full-resolution screenshot</span>
-                          </span>
-                        )}
-
-                        <img
-                          src={shot.src}
-                          alt={shot.caption}
-                          draggable={false}
-                          ref={(node) => {
-                            // A cached image can already be complete before
-                            // onLoad binds — and so can a failed one, which
-                            // only `naturalWidth` tells apart.
-                            if (!node?.complete) return;
-                            if (node.naturalWidth > 0) markLoaded(shot.src);
-                            else markFailed(shot.src);
-                          }}
-                          onLoad={() => markLoaded(shot.src)}
-                          onError={() => markFailed(shot.src)}
-                          className={`relative w-full h-full object-cover select-none transition-opacity duration-300 ${
-                            ready ? 'opacity-100' : 'opacity-0'
-                          }`}
-                        />
-                      </motion.div>
-                    );
-                  })()}
-                </AnimatePresence>
+                  {/* The track carries all three panes at once. Dragging moves
+                      the track itself, so the neighbour really does come in
+                      from the edge under the finger; releasing hands the same
+                      offset to the settle animation. */}
+                  <motion.div
+                    className={`absolute inset-0 ${
+                      canNavigate ? 'cursor-grab active:cursor-grabbing' : ''
+                    }`}
+                    style={{ x: trackX }}
+                    drag={canNavigate ? 'x' : false}
+                    dragDirectionLock
+                    dragConstraints={{ left: -frameWidth, right: frameWidth }}
+                    dragElastic={0.12}
+                    dragMomentum={false}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  >
+                    {trackPanes.map(({ shot, slot }) => (
+                      <LightboxPane
+                        key={slot}
+                        shot={shot}
+                        slot={slot}
+                        ready={loadedSrcs.includes(shot.src)}
+                        // A full-resolution PNG that will not load leaves the
+                        // thumbnail standing in for it — sharp rather than
+                        // blurred, so it reads as the picture instead of a
+                        // stalled preview.
+                        failed={!loadedSrcs.includes(shot.src) && failedSrcs.includes(shot.src)}
+                        onLoaded={markLoaded}
+                        onFailed={markFailed}
+                      />
+                    ))}
+                  </motion.div>
                 </div>
 
                 {canNavigate && (
@@ -887,7 +1046,12 @@ export const Projects: FC = () => {
                     type="button"
                     onClick={() => goToImage(1)}
                     aria-label="Next screenshot"
-                    className="shrink-0 p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white bg-white/[0.08] hover:bg-white/[0.18] border border-white/[0.12] opacity-60 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                    tabIndex={isSwiping ? -1 : undefined}
+                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
+                      isSwiping
+                        ? 'opacity-0 pointer-events-none'
+                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
+                    }`}
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
