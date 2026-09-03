@@ -57,11 +57,12 @@ export const Projects: FC = () => {
   // +1 when moving forwards, -1 backwards: it decides which edge the incoming
   // image slides in from.
   const [slideDirection, setSlideDirection] = useState(0);
-  // Full-resolution sources that have finished decoding. Keyed by src rather
-  // than a single boolean so the outgoing image keeps its own loaded state
-  // mid-swipe, and so stepping back to an image already seen doesn't
-  // re-introduce the spinner.
+  // Full-resolution sources that have finished decoding, and those that could
+  // not be fetched. Keyed by src rather than a single boolean so the outgoing
+  // image keeps its own state mid-swipe, and so stepping back to an image
+  // already seen doesn't re-introduce the spinner.
   const [loadedSrcs, setLoadedSrcs] = useState<string[]>([]);
+  const [failedSrcs, setFailedSrcs] = useState<string[]>([]);
 
   const reduceMotion = useReducedMotion();
 
@@ -122,6 +123,7 @@ export const Projects: FC = () => {
       root.style.overflowAnchor = previousAnchor;
       window.removeEventListener('wheel', release);
       window.removeEventListener('touchstart', release);
+      window.removeEventListener('pointerdown', release);
       window.removeEventListener('keydown', release);
     };
 
@@ -148,9 +150,14 @@ export const Projects: FC = () => {
     frame = requestAnimationFrame(hold);
 
     // Stop the moment the visitor takes over — holding against their own scroll
-    // would feel like the page is stuck.
+    // would feel like the page is stuck. Presses count too: a navbar link
+    // clicked inside this window scrolls the page itself, and the correction
+    // below would undo it frame by frame while the instant `scroll-behavior`
+    // stripped its animation. The press that triggered this run has already
+    // happened, so it cannot release the pin it just set.
     window.addEventListener('wheel', release, { passive: true });
     window.addEventListener('touchstart', release, { passive: true });
+    window.addEventListener('pointerdown', release, { passive: true });
     window.addEventListener('keydown', release);
 
     return release;
@@ -164,13 +171,18 @@ export const Projects: FC = () => {
   const selectedImage = selectedIndex === null ? null : modalShots[selectedIndex] ?? null;
   const canNavigate = shotCount > 1;
 
-  // Loaded sources belong to one project's gallery; drop them with the project.
+  // These belong to one project's gallery; drop them with the project.
   useEffect(() => {
     setLoadedSrcs([]);
+    setFailedSrcs([]);
   }, [selectedProject]);
 
   const markLoaded = useCallback((src: string) => {
     setLoadedSrcs((previous) => (previous.includes(src) ? previous : [...previous, src]));
+  }, []);
+
+  const markFailed = useCallback((src: string) => {
+    setFailedSrcs((previous) => (previous.includes(src) ? previous : [...previous, src]));
   }, []);
 
   const openImage = useCallback((index: number) => {
@@ -792,6 +804,10 @@ export const Projects: FC = () => {
                   {(() => {
                     const shot = selectedImage;
                     const ready = loadedSrcs.includes(shot.src);
+                    // A full-resolution PNG that will not load leaves the
+                    // thumbnail standing in for it — sharp rather than blurred,
+                    // so it reads as the picture instead of a stalled preview.
+                    const failed = !ready && failedSrcs.includes(shot.src);
                     return (
                       <motion.div
                         key={shot.src}
@@ -824,15 +840,15 @@ export const Projects: FC = () => {
                             box with the close button floating in the middle of it. */}
                         <img
                           src={thumbFor(shot.src)}
-                          alt=""
-                          aria-hidden="true"
+                          alt={failed ? shot.caption : ''}
+                          aria-hidden={failed ? undefined : 'true'}
                           draggable={false}
-                          className={`absolute inset-0 w-full h-full object-cover blur-[3px] scale-105 select-none transition-opacity duration-300 ${
-                            ready ? 'opacity-0' : 'opacity-100'
-                          }`}
+                          className={`absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-300 ${
+                            failed ? '' : 'blur-[3px] scale-105'
+                          } ${ready ? 'opacity-0' : 'opacity-100'}`}
                         />
 
-                        {!ready && (
+                        {!ready && !failed && (
                           <span
                             className="absolute inset-0 flex items-center justify-center"
                             role="status"
@@ -847,11 +863,15 @@ export const Projects: FC = () => {
                           alt={shot.caption}
                           draggable={false}
                           ref={(node) => {
-                            // A cached image can already be complete before onLoad binds.
-                            if (node?.complete) markLoaded(shot.src);
+                            // A cached image can already be complete before
+                            // onLoad binds — and so can a failed one, which
+                            // only `naturalWidth` tells apart.
+                            if (!node?.complete) return;
+                            if (node.naturalWidth > 0) markLoaded(shot.src);
+                            else markFailed(shot.src);
                           }}
                           onLoad={() => markLoaded(shot.src)}
-                          onError={() => markLoaded(shot.src)}
+                          onError={() => markFailed(shot.src)}
                           className={`relative w-full h-full object-cover select-none transition-opacity duration-300 ${
                             ready ? 'opacity-100' : 'opacity-0'
                           }`}
