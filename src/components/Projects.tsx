@@ -177,8 +177,10 @@ export const Projects: FC = () => {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const trackAnimationRef = useRef<AnimationPlaybackControls | null>(null);
   // Where the track has to be re-pinned the instant the index changes, so the
-  // pane that slid into view keeps the exact position it already had.
+  // pane that slid into view keeps the exact position it already had, and the
+  // speed the finger was carrying when it let go.
   const pendingTrackXRef = useRef<number | null>(null);
+  const pendingVelocityRef = useRef(0);
 
   // Set while a lightbox swipe is in flight. A drag that travels past the edge
   // of the image releases the pointer over the backdrop, and the browser then
@@ -355,11 +357,12 @@ export const Projects: FC = () => {
    * afterwards would leave a frame where the two disagree.
    */
   const goToImage = useCallback(
-    (delta: number) => {
+    (delta: number, releaseVelocity = 0) => {
       if (shotCount < 2) return;
       const step = delta >= 0 ? 1 : -1;
       const width = frameRef.current?.offsetWidth ?? 0;
       pendingTrackXRef.current = width ? trackX.get() + step * width : 0;
+      pendingVelocityRef.current = releaseVelocity;
       setSelectedIndex((current) =>
         current === null ? current : (current + step + shotCount) % shotCount,
       );
@@ -371,21 +374,34 @@ export const Projects: FC = () => {
   // visible as a jump.
   useLayoutEffect(() => {
     const pinned = pendingTrackXRef.current;
+    const releaseVelocity = pendingVelocityRef.current;
     pendingTrackXRef.current = null;
+    pendingVelocityRef.current = 0;
     trackAnimationRef.current?.stop();
 
     if (pinned === null) {
       // A freshly opened lightbox starts centred.
-      trackX.set(0);
+      trackX.jump(0);
       return;
     }
 
-    trackX.set(pinned);
+    // `jump` rather than `set`: re-pinning moves the track a whole frame width
+    // in no time at all, and `set` records that as the value's velocity. The
+    // settle below would then inherit a speed of thousands of pixels a second
+    // and hurl the track several widths away before springing back past centre
+    // — the flick away and back that shows up at the end of every transition.
+    // `jump` clears the velocity, and the real one is handed over explicitly.
+    trackX.jump(pinned);
     if (reduceMotion || pinned === 0) {
-      trackX.set(0);
+      trackX.jump(0);
       return;
     }
-    trackAnimationRef.current = animate(trackX, 0, SETTLE_SPRING);
+    trackAnimationRef.current = animate(trackX, 0, {
+      ...SETTLE_SPRING,
+      // The finger was already moving this way; the settle carries on from it
+      // rather than restarting from rest.
+      velocity: releaseVelocity,
+    });
   }, [selectedIndex, reduceMotion, trackX]);
 
   useEffect(() => () => trackAnimationRef.current?.stop(), []);
@@ -415,7 +431,7 @@ export const Projects: FC = () => {
         frameRef.current?.offsetWidth ?? 0,
       );
       if (step !== 0) {
-        goToImage(step);
+        goToImage(step, info.velocity.x);
         return;
       }
 
