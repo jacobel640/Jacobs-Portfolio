@@ -1,5 +1,14 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, FC } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  FC,
+} from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import type { PanInfo, Variants } from 'framer-motion';
 import {
   Folder,
   Github,
@@ -12,18 +21,55 @@ import {
   Layers,
   ZoomIn,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   Server,
   Loader2,
 } from 'lucide-react';
 import { RichText } from './RichText';
 import { projects, thumbFor } from '../data/projects';
-import type { FilterType, Project, Screenshot } from '../data/projects';
+import type { FilterType, Project } from '../data/projects';
+
+/** How far a horizontal drag has to travel — distance plus a slice of its
+ *  throw velocity — before it counts as a swipe rather than a stray touch. */
+const SWIPE_THRESHOLD_PX = 55;
+
+/** The outgoing image leaves the way the incoming one arrives from. */
+const slideVariants: Variants = {
+  enter: (direction: number) => ({ x: direction >= 0 ? '100%' : '-100%', opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction >= 0 ? '-100%' : '100%', opacity: 0 }),
+};
+
+/** Same transition without the travel, for visitors who ask for reduced motion. */
+const fadeVariants: Variants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
+};
 
 export const Projects: FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedImage, setSelectedImage] = useState<Screenshot | null>(null);
-  const [fullImageReady, setFullImageReady] = useState(false);
+  // The lightbox tracks a position in the project's screenshot list rather than
+  // a single shot, so it can walk to the next or previous one.
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // +1 when moving forwards, -1 backwards: it decides which edge the incoming
+  // image slides in from.
+  const [slideDirection, setSlideDirection] = useState(0);
+  // Full-resolution sources that have finished decoding. Keyed by src rather
+  // than a single boolean so the outgoing image keeps its own loaded state
+  // mid-swipe, and so stepping back to an image already seen doesn't
+  // re-introduce the spinner.
+  const [loadedSrcs, setLoadedSrcs] = useState<string[]>([]);
+
+  const reduceMotion = useReducedMotion();
+
+  // Set while a lightbox swipe is in flight. A drag that travels past the edge
+  // of the image releases the pointer over the backdrop, and the browser then
+  // fires a click on their common ancestor — which would read as "clicked
+  // outside the image" and close the lightbox at the end of every swipe.
+  const swipedRef = useRef(false);
 
   // The card that opened the modal, so focus can be handed back on close.
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -45,28 +91,146 @@ export const Projects: FC = () => {
     if (target === null) return;
     pinnedBarTopRef.current = null;
 
-    // The grid animates its reflow, so hold the bar in place across the whole
-    // transition rather than correcting once.
+    const root = document.documentElement;
+
+    // The stylesheet sets `scroll-behavior: smooth` on <html>, and that applies
+    // to programmatic scrolls too. Every correction below would animate, and a
+    // correction issued each frame would interrupt the one before it — which is
+    // exactly the "page jumps away and slides back" flicker. Corrections have to
+    // land instantly.
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+
+    // Scroll anchoring is the other half of it. Adding or removing cards moves
+    // everything below the grid, so the browser silently shifts the scroll
+    // position to hold whichever element it picked as the anchor still — which
+    // is what actually drags the filter bar off its mark, a frame or two after
+    // the click and again when the exit animations unmount their cards. Turning
+    // it off on the root excludes the whole document, and only for as long as
+    // the reflow lasts.
+    const previousAnchor = root.style.overflowAnchor;
+    root.style.overflowAnchor = 'none';
+
     let frame = 0;
-    const deadline = performance.now() + 600;
-    const hold = () => {
+    let released = false;
+
+    const release = () => {
+      if (released) return;
+      released = true;
+      cancelAnimationFrame(frame);
+      root.style.scrollBehavior = previousBehavior;
+      root.style.overflowAnchor = previousAnchor;
+      window.removeEventListener('wheel', release);
+      window.removeEventListener('touchstart', release);
+      window.removeEventListener('keydown', release);
+    };
+
+    const correct = () => {
       const bar = filterBarRef.current;
       if (!bar) return;
       const drift = bar.getBoundingClientRect().top - target;
       if (Math.abs(drift) > 0.5) window.scrollBy(0, drift);
+    };
+
+    // Correct once synchronously, while we are still inside the layout phase:
+    // the first frame the visitor sees is then already in the right place,
+    // instead of being painted wrong and fixed a frame later.
+    correct();
+
+    // The grid animates its reflow, so keep holding the bar across the rest of
+    // the transition rather than correcting only once.
+    const deadline = performance.now() + 600;
+    const hold = () => {
+      correct();
       if (performance.now() < deadline) frame = requestAnimationFrame(hold);
+      else release();
     };
     frame = requestAnimationFrame(hold);
-    return () => cancelAnimationFrame(frame);
+
+    // Stop the moment the visitor takes over — holding against their own scroll
+    // would feel like the page is stuck.
+    window.addEventListener('wheel', release, { passive: true });
+    window.addEventListener('touchstart', release, { passive: true });
+    window.addEventListener('keydown', release);
+
+    return release;
   }, [activeFilter]);
 
-  // A new lightbox image starts out as the thumbnail again.
+  const modalShots = useMemo(
+    () => selectedProject?.detailedContent.screenshots ?? [],
+    [selectedProject],
+  );
+  const shotCount = modalShots.length;
+  const selectedImage = selectedIndex === null ? null : modalShots[selectedIndex] ?? null;
+  const canNavigate = shotCount > 1;
+
+  // Loaded sources belong to one project's gallery; drop them with the project.
   useEffect(() => {
-    setFullImageReady(false);
-  }, [selectedImage]);
+    setLoadedSrcs([]);
+  }, [selectedProject]);
+
+  const markLoaded = useCallback((src: string) => {
+    setLoadedSrcs((previous) => (previous.includes(src) ? previous : [...previous, src]));
+  }, []);
+
+  const openImage = useCallback((index: number) => {
+    setSlideDirection(0);
+    setSelectedIndex(index);
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setSelectedIndex(null);
+  }, []);
+
+  /** Steps the lightbox by `delta`, wrapping around at either end. */
+  const goToImage = useCallback(
+    (delta: number) => {
+      if (shotCount < 2) return;
+      setSlideDirection(delta >= 0 ? 1 : -1);
+      setSelectedIndex((current) =>
+        current === null ? current : (current + delta + shotCount) % shotCount,
+      );
+    },
+    [shotCount],
+  );
+
+  const dismissLightbox = useCallback(() => {
+    // Swallow the click a completed swipe leaves behind, once.
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
+    closeLightbox();
+  }, [closeLightbox]);
+
+  const handleDragEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      // Velocity carries the intent of a short, fast flick that never travels
+      // far enough on distance alone.
+      const throw_ = info.offset.x + info.velocity.x * 0.2;
+      if (throw_ <= -SWIPE_THRESHOLD_PX) goToImage(1);
+      else if (throw_ >= SWIPE_THRESHOLD_PX) goToImage(-1);
+    },
+    [goToImage],
+  );
+
+  // Keep the neighbours warm so a swipe lands on a decoded image rather than a
+  // spinner.
+  useEffect(() => {
+    if (selectedIndex === null || shotCount < 2) return;
+    const neighbours = [
+      modalShots[(selectedIndex + 1) % shotCount],
+      modalShots[(selectedIndex - 1 + shotCount) % shotCount],
+    ];
+    neighbours.forEach((shot) => {
+      if (!shot) return;
+      const preload = new Image();
+      preload.src = shot.src;
+    });
+  }, [selectedIndex, shotCount, modalShots]);
 
   const closeProject = useCallback(() => {
-    setSelectedImage(null);
+    setSelectedIndex(null);
     setSelectedProject(null);
   }, []);
 
@@ -90,18 +254,30 @@ export const Projects: FC = () => {
     };
   }, [selectedProject, selectedImage]);
 
-  // Escape closes the lightbox first, then the project modal.
+  // Escape closes the lightbox first, then the project modal. The arrow keys
+  // are the keyboard equivalent of the swipe gesture.
   useEffect(() => {
     if (!selectedProject && !selectedImage) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      if (selectedImage) setSelectedImage(null);
-      else closeProject();
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        if (selectedImage) closeLightbox();
+        else closeProject();
+        return;
+      }
+
+      if (!selectedImage || !canNavigate) return;
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToImage(1);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToImage(-1);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedProject, selectedImage, closeProject]);
+  }, [selectedProject, selectedImage, canNavigate, closeProject, closeLightbox, goToImage]);
 
   // Move focus into the modal on open, and back to the originating card on close.
   useEffect(() => {
@@ -119,8 +295,6 @@ export const Projects: FC = () => {
       : projects.filter((project) => project.category === activeFilter);
 
   const filterTabs: FilterType[] = ['All', 'Android', 'Fullstack', 'Backend'];
-
-  const modalShots = selectedProject?.detailedContent.screenshots ?? [];
 
   return (
     <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
@@ -464,11 +638,11 @@ export const Projects: FC = () => {
 
                   {modalShots.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {modalShots.map((shot) => (
+                      {modalShots.map((shot, index) => (
                         <figure key={shot.src} className="m-0">
                           <button
                             type="button"
-                            onClick={() => setSelectedImage(shot)}
+                            onClick={() => openImage(index)}
                             aria-label={`Zoom: ${shot.caption}`}
                             className="group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                           >
@@ -564,7 +738,13 @@ export const Projects: FC = () => {
         {selectedImage && (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-2xl"
-            onClick={() => setSelectedImage(null)}
+            /* Every press starts out as a plain click; only a drag that actually
+               engages flips the flag, and the next press clears it again, so a
+               stale flag can never swallow a real dismissal. */
+            onPointerDownCapture={() => {
+              swipedRef.current = false;
+            }}
+            onClick={dismissLightbox}
           >
             <motion.div
               role="dialog"
@@ -578,7 +758,7 @@ export const Projects: FC = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                onClick={() => setSelectedImage(null)}
+                onClick={closeLightbox}
                 autoFocus
                 className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white bg-white/[0.1] hover:bg-white/[0.2] border border-white/[0.15] rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                 aria-label="Close image preview"
@@ -586,46 +766,123 @@ export const Projects: FC = () => {
                 <X className="w-5 h-5" />
               </button>
 
-              {/* The grid already fetched the thumbnail, so it paints immediately
-                  and holds the frame at the right size while the full-resolution
-                  PNG arrives — rather than an empty box with the close button
-                  floating in the middle of it. */}
-              <div className="relative aspect-[9/20] h-[76vh] max-w-full overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950">
-                <img
-                  src={thumbFor(selectedImage.src)}
-                  alt=""
-                  aria-hidden="true"
-                  className={`absolute inset-0 w-full h-full object-cover blur-[3px] scale-105 transition-opacity duration-300 ${
-                    fullImageReady ? 'opacity-0' : 'opacity-100'
-                  }`}
-                />
+              {/* The frame keeps its size across a swipe; only its contents move,
+                  so the panel never resizes mid-gesture. */}
+              <div className="group relative aspect-[9/20] h-[76vh] max-w-full overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950">
+                <AnimatePresence initial={false} custom={slideDirection}>
+                  {(() => {
+                    const shot = selectedImage;
+                    const ready = loadedSrcs.includes(shot.src);
+                    return (
+                      <motion.div
+                        key={shot.src}
+                        custom={slideDirection}
+                        variants={reduceMotion ? fadeVariants : slideVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{
+                          type: 'tween',
+                          ease: [0.22, 1, 0.36, 1],
+                          duration: reduceMotion ? 0.15 : 0.32,
+                        }}
+                        drag={canNavigate ? 'x' : false}
+                        dragDirectionLock
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.16}
+                        dragMomentum={false}
+                        onDragStart={() => {
+                          swipedRef.current = true;
+                        }}
+                        onDragEnd={handleDragEnd}
+                        className={`absolute inset-0 ${
+                          canNavigate ? 'cursor-grab active:cursor-grabbing' : ''
+                        }`}
+                      >
+                        {/* The grid already fetched the thumbnail, so it paints
+                            immediately and holds the frame at the right size while
+                            the full-resolution PNG arrives — rather than an empty
+                            box with the close button floating in the middle of it. */}
+                        <img
+                          src={thumbFor(shot.src)}
+                          alt=""
+                          aria-hidden="true"
+                          draggable={false}
+                          className={`absolute inset-0 w-full h-full object-cover blur-[3px] scale-105 select-none transition-opacity duration-300 ${
+                            ready ? 'opacity-0' : 'opacity-100'
+                          }`}
+                        />
 
-                {!fullImageReady && (
-                  <span className="absolute inset-0 flex items-center justify-center" role="status">
-                    <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
-                    <span className="sr-only">Loading full-resolution screenshot</span>
-                  </span>
+                        {!ready && (
+                          <span
+                            className="absolute inset-0 flex items-center justify-center"
+                            role="status"
+                          >
+                            <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
+                            <span className="sr-only">Loading full-resolution screenshot</span>
+                          </span>
+                        )}
+
+                        <img
+                          src={shot.src}
+                          alt={shot.caption}
+                          draggable={false}
+                          ref={(node) => {
+                            // A cached image can already be complete before onLoad binds.
+                            if (node?.complete) markLoaded(shot.src);
+                          }}
+                          onLoad={() => markLoaded(shot.src)}
+                          onError={() => markLoaded(shot.src)}
+                          className={`relative w-full h-full object-cover select-none transition-opacity duration-300 ${
+                            ready ? 'opacity-100' : 'opacity-0'
+                          }`}
+                        />
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+
+                {/* Swiping is the primary gesture; these are a quiet fallback for
+                    a mouse, so they sit at half opacity until pointed at. */}
+                {canNavigate && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => goToImage(-1)}
+                      aria-label="Previous screenshot"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 hover:bg-black/75 text-white/80 hover:text-white border border-white/[0.14] shadow-lg shadow-black/30 backdrop-blur-sm opacity-55 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-90 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => goToImage(1)}
+                      aria-label="Next screenshot"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 hover:bg-black/75 text-white/80 hover:text-white border border-white/[0.14] shadow-lg shadow-black/30 backdrop-blur-sm opacity-55 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-90 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
                 )}
-
-                <img
-                  key={selectedImage.src}
-                  src={selectedImage.src}
-                  alt={selectedImage.caption}
-                  ref={(node) => {
-                    // A cached image can already be complete before onLoad binds.
-                    if (node?.complete) setFullImageReady(true);
-                  }}
-                  onLoad={() => setFullImageReady(true)}
-                  onError={() => setFullImageReady(true)}
-                  className={`relative w-full h-full object-cover transition-opacity duration-300 ${
-                    fullImageReady ? 'opacity-100' : 'opacity-0'
-                  }`}
-                />
               </div>
 
-              <p className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide">
+              <p
+                className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide text-center px-2"
+                aria-live="polite"
+              >
                 {selectedImage.caption}
               </p>
+
+              {canNavigate && selectedIndex !== null && (
+                <p className="mt-1 text-[11px] text-slate-500 tracking-wide">
+                  {selectedIndex + 1} / {shotCount}
+                  <span className="sr-only">
+                    {' '}
+                    — swipe or use the arrow keys to move between screenshots
+                  </span>
+                </p>
+              )}
             </motion.div>
           </div>
         )}
