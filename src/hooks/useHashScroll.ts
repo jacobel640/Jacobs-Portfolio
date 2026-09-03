@@ -18,7 +18,12 @@ const prefersReducedMotion = () =>
  * for the last section on the page the offset never moves at all — only the
  * document grows tall enough to reach it. So this watches the DOM for mounts
  * and the body for resizes, and re-aims whenever either changes the answer,
- * until the visitor scrolls or the deadline passes.
+ * until the visitor takes over or the deadline passes.
+ *
+ * "Takes over" has to include clicking, not just scrolling: the projects
+ * filter changes how many cards the grid holds, which resizes the body, which
+ * would otherwise look like the page still assembling and pull the view back
+ * to the top of the section mid-interaction.
  */
 export function useHashScroll(): void {
   useEffect(() => {
@@ -41,6 +46,7 @@ export function useHashScroll(): void {
         resizes.disconnect();
         window.removeEventListener('wheel', stop);
         window.removeEventListener('touchstart', stop);
+        window.removeEventListener('pointerdown', stop);
         window.removeEventListener('keydown', stop);
         cleanup = null;
       };
@@ -69,10 +75,12 @@ export function useHashScroll(): void {
       const mutations = new MutationObserver(schedule);
       const resizes = new ResizeObserver(schedule);
 
-      // Give up rather than fight a visitor who has started scrolling.
+      // Give up rather than fight a visitor who has started using the page —
+      // scrolling it, or pressing anything on it.
       const deadline = setTimeout(stop, DEADLINE_MS);
       window.addEventListener('wheel', stop, { passive: true, once: true });
       window.addEventListener('touchstart', stop, { passive: true, once: true });
+      window.addEventListener('pointerdown', stop, { passive: true, once: true });
       window.addEventListener('keydown', stop, { once: true });
 
       mutations.observe(document.body, { childList: true, subtree: true });
