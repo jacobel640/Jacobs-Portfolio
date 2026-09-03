@@ -766,9 +766,28 @@ export const Projects: FC = () => {
                 <X className="w-5 h-5" />
               </button>
 
-              {/* The frame keeps its size across a swipe; only its contents move,
-                  so the panel never resizes mid-gesture. */}
-              <div className="group relative aspect-[9/20] h-[76vh] max-w-full overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950">
+              {/* Arrows flank the image rather than sitting on top of it, so
+                  nothing covers the screenshot. They are laid out first, which
+                  is why the frame gives up the width they need: its height is
+                  capped by what is left over once both buttons, the gaps and
+                  the overlay's own padding are taken out of the viewport. */}
+              <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
+                {canNavigate && (
+                  <button
+                    type="button"
+                    onClick={() => goToImage(-1)}
+                    aria-label="Previous screenshot"
+                    className="shrink-0 p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white bg-white/[0.08] hover:bg-white/[0.18] border border-white/[0.12] opacity-60 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                )}
+
+                <div
+                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950 ${
+                    canNavigate ? 'max-h-[calc((100vw-7rem)*20/9)]' : 'max-w-full'
+                  }`}
+                >
                 <AnimatePresence initial={false} custom={slideDirection}>
                   {(() => {
                     const shot = selectedImage;
@@ -841,29 +860,17 @@ export const Projects: FC = () => {
                     );
                   })()}
                 </AnimatePresence>
+                </div>
 
-                {/* Swiping is the primary gesture; these are a quiet fallback for
-                    a mouse, so they sit at half opacity until pointed at. */}
                 {canNavigate && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => goToImage(-1)}
-                      aria-label="Previous screenshot"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 hover:bg-black/75 text-white/80 hover:text-white border border-white/[0.14] shadow-lg shadow-black/30 backdrop-blur-sm opacity-55 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-90 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => goToImage(1)}
-                      aria-label="Next screenshot"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-black/50 hover:bg-black/75 text-white/80 hover:text-white border border-white/[0.14] shadow-lg shadow-black/30 backdrop-blur-sm opacity-55 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-90 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => goToImage(1)}
+                    aria-label="Next screenshot"
+                    className="shrink-0 p-1.5 sm:p-2 rounded-full text-slate-300 hover:text-white bg-white/[0.08] hover:bg-white/[0.18] border border-white/[0.12] opacity-60 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 )}
               </div>
 
