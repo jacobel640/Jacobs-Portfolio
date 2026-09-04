@@ -11,6 +11,7 @@
  * 2. scripts/verify-bundle.mjs
  * 3. scripts/verify-screenshots.mjs
  * 4. scripts/verify-fallback.mjs
+ * 5. scripts/verify-prerender.mjs
  */
 
 import { spawnSync } from 'child_process';
@@ -45,6 +46,12 @@ const SUITES = [
     name: 'Modal Fallback & Screenshot Logic',
     script: join(SCRIPTS_DIR, 'verify-fallback.mjs'),
     description: 'Asserts verbatim "No screenshots available to display" in Projects.tsx'
+  },
+  {
+    id: 'V5-PRERENDER',
+    name: 'Prerendered Static HTML',
+    script: join(SCRIPTS_DIR, 'verify-prerender.mjs'),
+    description: 'Asserts dist/index.html carries the full page as HTML, readable without JS'
   }
 ];
 

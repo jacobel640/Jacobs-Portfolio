@@ -8,6 +8,12 @@ Personal portfolio site for Jacob Elcharar, Android Software Engineer & Fullstac
 
 React 18 · TypeScript · Vite 5 · Tailwind CSS 3 · Framer Motion
 
+`npm run build` is a static-site build: after Vite emits the client bundle,
+`scripts/prerender.mjs` renders the same component tree to HTML and writes it
+into `#root` in `dist/index.html`. The browser hydrates that markup rather than
+replacing it, and anything that does not run JavaScript — search crawlers, link
+unfurlers, LLM fetchers — reads the page content directly out of the HTML.
+
 ## Development
 
 ```bash
@@ -30,6 +36,7 @@ node scripts/verify-all.mjs      # runs the full suite
 | `verify-bundle.mjs` | vendor chunks are split as configured |
 | `verify-screenshots.mjs` | all 22 project screenshots present and valid |
 | `verify-fallback.mjs` | modal renders the empty-state text correctly |
+| `verify-prerender.mjs` | `dist/index.html` carries the full page as static HTML |
 
 ## Project structure
 
@@ -37,6 +44,7 @@ node scripts/verify-all.mjs      # runs the full suite
 src/
   components/     Navbar, Hero, Skills, Projects, Contact, GlassSkeleton
   data/           projects.ts — project case-study content
+  entry-server.tsx  build-only entry used by the prerender pass
 public/
   screenshots/    full-resolution PNGs, with WebP thumbnails in thumbs/
 ```
