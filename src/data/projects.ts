@@ -38,6 +38,38 @@ export const thumbFor = (src: string): string =>
 
 export const projects: Project[] = [
   {
+    id: 'e-commerce-waba',
+    title: 'Minim4You Backend',
+    category: 'Backend',
+    categoryLabel: 'Automated E-Commerce & WABA',
+    description:
+      'Architected and deployed a backend service to automate end-to-end retail ordering and invoicing workflows. Transitioned messaging infrastructure to the official Meta WABA for enterprise reliability.',
+    detailedContent: {
+      overview: [
+        'Minim4You required a **highly reliable backend** to sync a customer-facing Wix interface with real-time WhatsApp business messaging. This system acts as the **central nervous system for retail ordering and invoicing**.',
+        'The problem it solves is a gap in day-to-day operations: orders arrived in one system, the business actually talked to its customers in another, and **invoicing was manual work sitting in between**. The service closes that gap — when an order is placed it records the order, generates the invoice, and routes the confirmation to the customer over WhatsApp **without anyone re-typing an order number**.',
+        'A significant piece of the work was **migrating messaging onto the official Meta WhatsApp Business API**. Unofficial integrations are convenient right up until the account is restricted; moving to WABA meant business verification, phone-number registration and getting message templates approved, and in return the service gained real delivery receipts, documented rate limits, and an integration that **cannot be revoked without notice**. That trade is what took the system from a working prototype to something a business can depend on.',
+        'Integrating two third-party platforms also means **inheriting their failure modes**. Webhooks arrive out of order, get retried, and are delivered more than once, while rate limits and transient outages are routine — and none of it may produce a duplicate invoice or a lost order. Every inbound event is therefore treated as **untrusted and repeatable**: handlers record the provider event ID before acting and short-circuit on a repeat (**idempotency**), and outbound calls **retry with backoff** so a temporary API failure delays a message instead of dropping it.',
+        '**Order state is never reconstructed from the messaging thread.** `PostgreSQL` holds the canonical record and every transition is written inside a transaction, so a crash mid-flow resumes from a known state rather than from whatever the last WhatsApp message happened to say.',
+      ],
+      architecture: [
+        'Java Spring Boot microservice deployed on Heroku',
+        'Meta WhatsApp Business API (WABA) for official, reliable messaging',
+        'Wix REST APIs to synchronize CRM customer records and inventory',
+        'PostgreSQL database for transactional integrity',
+      ],
+      features: [
+        'Real-time order synchronization from web to WhatsApp',
+        'Automated invoice generation and PDF routing',
+        'Fault-tolerant webhook processors for message delivery receipts',
+      ],
+      screenshots: [],
+    },
+    tags: ['Spring Boot', 'PostgreSQL', 'Meta WABA', 'Wix APIs', 'Heroku'],
+    isPrivate: true,
+    icon: Server,
+  },
+  {
     id: 'taskflow',
     title: 'TaskFlow',
     category: 'Android',
@@ -200,38 +232,6 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/Files',
     isPrivate: false,
     icon: Smartphone,
-  },
-  {
-    id: 'e-commerce-waba',
-    title: 'Minim4You Backend',
-    category: 'Backend',
-    categoryLabel: 'Automated E-Commerce & WABA',
-    description:
-      'Architected and deployed a backend service to automate end-to-end retail ordering and invoicing workflows. Transitioned messaging infrastructure to the official Meta WABA for enterprise reliability.',
-    detailedContent: {
-      overview: [
-        'Minim4You required a **highly reliable backend** to sync a customer-facing Wix interface with real-time WhatsApp business messaging. This system acts as the **central nervous system for retail ordering and invoicing**.',
-        'The problem it solves is a gap in day-to-day operations: orders arrived in one system, the business actually talked to its customers in another, and **invoicing was manual work sitting in between**. The service closes that gap — when an order is placed it records the order, generates the invoice, and routes the confirmation to the customer over WhatsApp **without anyone re-typing an order number**.',
-        'A significant piece of the work was **migrating messaging onto the official Meta WhatsApp Business API**. Unofficial integrations are convenient right up until the account is restricted; moving to WABA meant business verification, phone-number registration and getting message templates approved, and in return the service gained real delivery receipts, documented rate limits, and an integration that **cannot be revoked without notice**. That trade is what took the system from a working prototype to something a business can depend on.',
-        'Integrating two third-party platforms also means **inheriting their failure modes**. Webhooks arrive out of order, get retried, and are delivered more than once, while rate limits and transient outages are routine — and none of it may produce a duplicate invoice or a lost order. Every inbound event is therefore treated as **untrusted and repeatable**: handlers record the provider event ID before acting and short-circuit on a repeat (**idempotency**), and outbound calls **retry with backoff** so a temporary API failure delays a message instead of dropping it.',
-        '**Order state is never reconstructed from the messaging thread.** `PostgreSQL` holds the canonical record and every transition is written inside a transaction, so a crash mid-flow resumes from a known state rather than from whatever the last WhatsApp message happened to say.',
-      ],
-      architecture: [
-        'Java Spring Boot microservice deployed on Heroku',
-        'Meta WhatsApp Business API (WABA) for official, reliable messaging',
-        'Wix REST APIs to synchronize CRM customer records and inventory',
-        'PostgreSQL database for transactional integrity',
-      ],
-      features: [
-        'Real-time order synchronization from web to WhatsApp',
-        'Automated invoice generation and PDF routing',
-        'Fault-tolerant webhook processors for message delivery receipts',
-      ],
-      screenshots: [],
-    },
-    tags: ['Spring Boot', 'PostgreSQL', 'Meta WABA', 'Wix APIs', 'Heroku'],
-    isPrivate: true,
-    icon: Server,
   },
   {
     id: 'whatsapp-status',
