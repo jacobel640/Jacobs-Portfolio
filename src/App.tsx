@@ -2,6 +2,7 @@ import { FC, lazy, Suspense } from 'react';
 import { MotionConfig } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
+import About from './components/About';
 import { SkillsSkeleton, ProjectsSkeleton, ContactSkeleton } from './components/GlassSkeleton';
 import { useHashScroll } from './hooks/useHashScroll';
 
@@ -26,6 +27,7 @@ export const App: FC = () => {
 
       <main className="relative">
         <Hero />
+        <About />
         <Suspense fallback={<SkillsSkeleton />}>
           <Skills />
         </Suspense>

@@ -12,7 +12,7 @@
  * Assertions:
  * 1. `#root` is not empty.
  * 2. The prerendered markup carries a substantial amount of real text.
- * 3. Each section landmark (hero/skills/projects/contact) is present.
+ * 3. Each section landmark (hero/about/skills/projects/contact) is present.
  * 4. Every project title from the data file appears in the HTML.
  * 5. The head still carries title, description and the Open Graph tags.
  */
@@ -29,7 +29,7 @@ const PROJECTS_SRC = join(ROOT_DIR, 'src', 'data', 'projects.ts');
 /** Comfortably above the skeletons, comfortably below the real page (~4.7k). */
 const MIN_TEXT_CHARS = 2000;
 
-const SECTION_IDS = ['hero', 'skills', 'projects', 'contact'];
+const SECTION_IDS = ['hero', 'about', 'skills', 'projects', 'contact'];
 
 const HEAD_TAGS = [
   '<title>',

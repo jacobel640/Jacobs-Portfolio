@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Code2, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { Menu, X, Code2, Sparkles, ArrowRight, Github, FileText } from 'lucide-react';
+import { RESUME_URL } from '../config/site';
 
 interface NavItem {
   name: string;
@@ -10,7 +11,7 @@ interface NavItem {
 const GITHUB_URL = 'https://github.com/jacobel640';
 
 const navItems: NavItem[] = [
-  { name: 'About', href: '#hero' },
+  { name: 'About', href: '#about' },
   { name: 'Skills', href: '#skills' },
   { name: 'Projects', href: '#projects' },
   { name: 'Contact', href: '#contact' },
@@ -171,6 +172,19 @@ export const Navbar: FC = () => {
 
         {/* Desktop Quick Actions */}
         <div className="hidden md:flex items-center gap-3">
+          {/* Deliberately an outline link rather than a second filled button:
+              it has to be findable without competing with "Let's Talk". */}
+          {RESUME_URL && (
+            <a
+              href={RESUME_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-full text-slate-300 hover:text-white bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.12] hover:border-white/[0.22] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Resume</span>
+            </a>
+          )}
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -240,6 +254,18 @@ export const Navbar: FC = () => {
                   </a>
                 );
               })}
+              {RESUME_URL && (
+                <a
+                  href={RESUME_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/[0.04] transition-colors"
+                >
+                  <span>Resume</span>
+                  <FileText className="w-4 h-4 text-slate-400" />
+                </a>
+              )}
               <div className="pt-3 mt-1 border-t border-slate-800 flex items-center justify-between gap-3">
                 <a
                   href={GITHUB_URL}

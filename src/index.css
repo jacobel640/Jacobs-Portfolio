@@ -39,6 +39,7 @@
      that space for every scroll that targets a section, whether it comes from
      a nav click, the URL hash or the browser's own anchor handling. */
   #hero,
+  #about,
   #skills,
   #projects,
   #contact {
@@ -47,6 +48,7 @@
 
   @media (max-width: 767px) {
     #hero,
+    #about,
     #skills,
     #projects,
     #contact {

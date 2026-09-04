@@ -38,11 +38,29 @@ node scripts/verify-all.mjs      # runs the full suite
 | `verify-fallback.mjs` | modal renders the empty-state text correctly |
 | `verify-prerender.mjs` | `dist/index.html` carries the full page as static HTML |
 
+## Adding the résumé and profile photo
+
+Both are opt-in through `src/config/site.ts`, so the UI that links to them only
+renders once the file is actually deployed — a portfolio that links a recruiter
+to a 404 is worse than one that does not offer the link at all.
+
+| Asset | Drop the file at | Then set |
+| --- | --- | --- |
+| Résumé PDF | `public/resume.pdf` | `RESUME_URL = '/resume.pdf'` |
+| Profile photo | `public/profile.jpg` | `PROFILE_IMAGE = '/profile.jpg'` |
+
+With `RESUME_URL` set, a `Resume` link appears in the navbar (desktop and
+mobile menu) and a `View Resume` action joins the hero CTAs, all opening the
+PDF in a new tab rather than forcing a download. With `PROFILE_IMAGE` set, the
+About portrait frame shows the photograph instead of the initials monogram; a
+square headshot of at least 800×800 is what the frame is built for.
+
 ## Project structure
 
 ```
 src/
-  components/     Navbar, Hero, Skills, Projects, Contact, GlassSkeleton
+  components/     Navbar, Hero, About, Skills, Projects, Contact, GlassSkeleton
+  config/         site.ts — résumé and profile-photo switches
   data/           projects.ts — project case-study content
   entry-server.tsx  build-only entry used by the prerender pass
 public/

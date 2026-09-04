@@ -1,6 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDown, ArrowRight, Mail, Smartphone, Server, Cpu, Sparkles } from 'lucide-react';
+import { ArrowDown, ArrowRight, Mail, Smartphone, Server, Cpu, Sparkles, FileText } from 'lucide-react';
+import { RESUME_URL } from '../config/site';
 
 export const Hero: FC = () => {
   const containerVariants = {
@@ -125,6 +126,21 @@ export const Hero: FC = () => {
             <Mail className="w-4 h-4 text-slate-400" />
             <span>Get In Touch</span>
           </a>
+
+          {/* Tertiary by design. A recruiter who wants the PDF will look for it;
+              everyone else should be pulled towards the work first. Opens in a
+              new tab rather than downloading, so it can be skimmed in place. */}
+          {RESUME_URL && (
+            <a
+              href={RESUME_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-slate-300 hover:text-white font-semibold border border-white/[0.06] hover:border-white/[0.16] hover:bg-slate-900/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+            >
+              <FileText className="w-4 h-4 text-slate-400" />
+              <span>View Resume</span>
+            </a>
+          )}
         </motion.div>
 
         {/* Scroll Indicator.
@@ -133,7 +149,7 @@ export const Hero: FC = () => {
             which would leave this stuck at the `hidden` opacity of 0. */}
         <motion.div variants={itemVariants}>
           <motion.a
-            href="#skills"
+            href="#about"
             animate={{ y: [0, 8, 0] }}
             transition={{
               duration: 2.2,
@@ -141,10 +157,10 @@ export const Hero: FC = () => {
               ease: 'easeInOut',
             }}
             className="inline-flex flex-col items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-300 transition-colors duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70"
-            aria-label="Scroll to Skills"
+            aria-label="Scroll to About"
           >
             <span className="tracking-widest uppercase text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-400" /> Explore Skills
+              <Sparkles className="w-3 h-3 text-indigo-400" /> More About Me
             </span>
             <ArrowDown className="w-4 h-4 text-indigo-400" />
           </motion.a>
