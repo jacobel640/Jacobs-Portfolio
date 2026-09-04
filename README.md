@@ -35,7 +35,7 @@ node scripts/verify-all.mjs      # runs the full suite
 
 ```
 src/
-  components/     Navbar, Hero, Skills, Projects, Contact, GlassSkeleton
+  components/     Navbar, Hero, About, Skills, Projects, Contact, GlassSkeleton
   data/           projects.ts — project case-study content
 public/
   screenshots/    full-resolution PNGs, with WebP thumbnails in thumbs/

@@ -10,14 +10,14 @@ interface NavItem {
 const GITHUB_URL = 'https://github.com/jacobel640';
 
 const navItems: NavItem[] = [
-  { name: 'About', href: '#hero' },
+  { name: 'About', href: '#about' },
   { name: 'Skills', href: '#skills' },
   { name: 'Projects', href: '#projects' },
   { name: 'Contact', href: '#contact' },
 ];
 
 export const Navbar: FC = () => {
-  const [activeSection, setActiveSection] = useState<string>('hero');
+  const [activeSection, setActiveSection] = useState<string>('about');
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 

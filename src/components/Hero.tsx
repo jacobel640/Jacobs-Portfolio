@@ -133,7 +133,7 @@ export const Hero: FC = () => {
             which would leave this stuck at the `hidden` opacity of 0. */}
         <motion.div variants={itemVariants}>
           <motion.a
-            href="#skills"
+            href="#about"
             animate={{ y: [0, 8, 0] }}
             transition={{
               duration: 2.2,
@@ -141,10 +141,10 @@ export const Hero: FC = () => {
               ease: 'easeInOut',
             }}
             className="inline-flex flex-col items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-300 transition-colors duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70"
-            aria-label="Scroll to Skills"
+            aria-label="Scroll to About"
           >
             <span className="tracking-widest uppercase text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-400" /> Explore Skills
+              <Sparkles className="w-3 h-3 text-indigo-400" /> More About Me
             </span>
             <ArrowDown className="w-4 h-4 text-indigo-400" />
           </motion.a>
