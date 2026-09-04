@@ -45,7 +45,22 @@ const RENDER_TIMEOUT_MS = 30_000;
 function renderToHtml(element) {
   return new Promise((resolvePromise, rejectPromise) => {
     const chunks = [];
-    let shellError = null;
+    let renderError = null;
+    let timer = null;
+    let settled = false;
+
+    // Every path out of the render has to end at exactly one of these. React
+    // reports failures through three different callbacks and the timeout is a
+    // fourth, so the guard is what keeps a second report from resolving a
+    // promise that already rejected — and, more importantly, what guarantees
+    // there is no path that reports nothing at all and leaves the build hanging.
+    const settle = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const fail = (error) => settle(rejectPromise, error);
 
     const sink = new Writable({
       write(chunk, _encoding, callback) {
@@ -55,25 +70,35 @@ function renderToHtml(element) {
     });
 
     sink.on('finish', () => {
-      if (shellError) rejectPromise(shellError);
-      else resolvePromise(Buffer.concat(chunks).toString('utf8'));
+      if (renderError) fail(renderError);
+      else settle(resolvePromise, Buffer.concat(chunks).toString('utf8'));
     });
-    sink.on('error', rejectPromise);
+    sink.on('error', fail);
 
     const { pipe, abort } = renderToPipeableStream(element, {
       onAllReady() {
-        clearTimeout(timer);
         pipe(sink);
+      },
+      // The shell failing is the one case where `onAllReady` never runs, so
+      // nothing is ever piped and `finish` never fires. Without this the build
+      // would hang on a render error rather than report it.
+      onShellError(error) {
+        fail(error ?? new Error('Prerender shell failed without an error.'));
       },
       onError(error) {
         // Recorded rather than thrown: React reports the error and then keeps
         // going, and rejecting from inside the callback would strand the sink.
-        shellError = error;
+        // The first error is kept, since later ones tend to be its fallout.
+        renderError ??= error;
       },
     });
 
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
+      // Abort first so React tears down its pending work, then fail directly:
+      // aborting alone does not guarantee another callback, and waiting for one
+      // is what a hang looks like.
       abort(new Error(`Prerender did not settle within ${RENDER_TIMEOUT_MS}ms`));
+      fail(new Error(`Prerender did not settle within ${RENDER_TIMEOUT_MS}ms`));
     }, RENDER_TIMEOUT_MS);
   });
 }
@@ -110,9 +135,12 @@ async function main() {
     throw new Error('Prerender produced an empty string.');
   }
 
+  // A function replacement, not a string: in a string, `$&`, `$\`` and `$'`
+  // are substitution patterns, so any of them occurring in the page copy would
+  // be silently rewritten into the output. A function is inserted verbatim.
   await writeFile(
     DIST_INDEX_HTML,
-    html.replace(ROOT_DIV, `<div id="root">${rendered}</div>`),
+    html.replace(ROOT_DIV, () => `<div id="root">${rendered}</div>`),
     'utf8'
   );
 

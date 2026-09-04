@@ -25,7 +25,9 @@
     -->
     <noscript>
       <style>
-        [style*="opacity:0"] {
+        /* `*=` would also catch a deliberate `opacity:0.5`, which is a real
+           value and not a hidden element — so exclude the fractional forms. */
+        [style*="opacity:0"]:not([style*="opacity:0."]) {
           opacity: 1 !important;
           transform: none !important;
         }
