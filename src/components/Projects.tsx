@@ -1,7 +1,6 @@
 import {
   useState,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useCallback,
@@ -26,6 +25,7 @@ import {
   Server,
   Loader2,
 } from 'lucide-react';
+import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect';
 import { RichText } from './RichText';
 import { projects, thumbFor } from '../data/projects';
 import type { FilterType, Project, Screenshot } from '../data/projects';
@@ -203,7 +203,7 @@ export const Projects: FC = () => {
     setActiveFilter(tab);
   }, []);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const target = pinnedBarTopRef.current;
     if (target === null) return;
     pinnedBarTopRef.current = null;
@@ -326,7 +326,7 @@ export const Projects: FC = () => {
 
   // One step of the track is exactly one frame width, so the width has to be
   // known before any of the gesture maths means anything.
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
     const measure = () => setFrameWidth(frame.offsetWidth);
@@ -372,7 +372,7 @@ export const Projects: FC = () => {
 
   // Re-pin and release the track. Runs before paint, so the swap above is never
   // visible as a jump.
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const pinned = pendingTrackXRef.current;
     const releaseVelocity = pendingVelocityRef.current;
     pendingTrackXRef.current = null;
