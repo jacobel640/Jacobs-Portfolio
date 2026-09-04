@@ -16,6 +16,24 @@
     <meta name="theme-color" content="#030712" />
     <meta name="color-scheme" content="dark" />
 
+    <!--
+      The build prerenders the page into #root, and Framer Motion serialises its
+      entry animations' starting state as inline `opacity:0`. With scripting on,
+      the animation runs and clears it. With scripting off nothing ever does, so
+      the prerendered copy would be present in the DOM but invisible — the worst
+      of both worlds. Reveal it instead of animating it in.
+    -->
+    <noscript>
+      <style>
+        /* `*=` would also catch a deliberate `opacity:0.5`, which is a real
+           value and not a hidden element — so exclude the fractional forms. */
+        [style*="opacity:0"]:not([style*="opacity:0."]) {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
+
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Jacob Elcharar" />
