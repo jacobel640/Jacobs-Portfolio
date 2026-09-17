@@ -2,12 +2,12 @@
 /**
  * scripts/verify-fallback.mjs
  * 
- * Verifies that the Projects component (`src/components/Projects.tsx`) correctly
+ * Verifies that the case-study page (`src/components/ProjectCaseStudy.tsx`) correctly
  * handles project screenshots and implements the mandatory fallback string:
  * "No screenshots available to display"
  * 
  * Assertions:
- * 1. `src/components/Projects.tsx` exists and is readable.
+ * 1. `src/components/ProjectCaseStudy.tsx` exists and is readable.
  * 2. Exact fallback string "No screenshots available to display" is present in source code.
  * 3. Conditional rendering logic checks for empty / undefined screenshots.
  * 4. Image rendering mapping `<img` or screenshot viewer exists for non-empty screenshots.
@@ -20,7 +20,9 @@ import { fileURLToPath } from 'url';
 
 const __dirname = resolve(fileURLToPath(import.meta.url), '..');
 const ROOT_DIR = resolve(__dirname, '..');
-const PROJECTS_TSX_PATH = join(ROOT_DIR, 'src', 'components', 'Projects.tsx');
+// The screenshot gallery moved out of the modal in Projects.tsx and onto the
+// case-study page when each project became a route of its own.
+const PROJECTS_TSX_PATH = join(ROOT_DIR, 'src', 'components', 'ProjectCaseStudy.tsx');
 
 const REQUIRED_FALLBACK_STRING = 'No screenshots available to display';
 
@@ -46,7 +48,7 @@ if (source.includes(REQUIRED_FALLBACK_STRING)) {
 } else {
   hasErrors = true;
   failures.push(
-    `Missing required verbatim fallback string in Projects.tsx: "${REQUIRED_FALLBACK_STRING}"`
+    `Missing required verbatim fallback string in ProjectCaseStudy.tsx: "${REQUIRED_FALLBACK_STRING}"`
   );
   console.log(`   ❌ Missing required verbatim fallback string: "${REQUIRED_FALLBACK_STRING}"`);
 }

@@ -49,9 +49,9 @@ const SUITES = [
   },
   {
     id: 'V5-PRERENDER',
-    name: 'Prerendered Static HTML',
+    name: 'Prerendered Static Routes',
     script: join(SCRIPTS_DIR, 'verify-prerender.mjs'),
-    description: 'Asserts dist/index.html carries the full page as HTML, readable without JS'
+    description: 'Asserts all 7 routes ship as HTML with their own head, readable without JS'
   }
 ];
 
