@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Code2, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { useRouter, normalisePath } from '../router-core';
 
 interface NavItem {
   name: string;
@@ -25,6 +26,13 @@ export const Navbar: FC = () => {
   // every section it passes and the indicator would animate through each one.
   // Hold it on the destination until the scroll settles.
   const glidingToRef = useRef<string | null>(null);
+
+  // The sections the nav points at live on the home page. From a case study
+  // they are not in the document at all, so the links have to lead home rather
+  // than at an anchor that resolves to nothing.
+  const { path, navigate } = useRouter();
+  const onHome = normalisePath(path) === '/';
+  const hrefFor = (hash: string) => (onHome ? hash : `/${hash}`);
 
   useEffect(() => {
     const sections = navItems.map((item) => item.href.slice(1));
@@ -93,6 +101,11 @@ export const Navbar: FC = () => {
       // Reflect the section in the URL so it can be copied and shared, without
       // adding a history entry for every click.
       window.history.replaceState(null, '', href);
+    } else if (!onHome) {
+      // Off the home page the section does not exist here at all. Navigating
+      // with the hash hands off to `useHashScroll`, which waits for the
+      // section's chunk to mount before aiming at it.
+      navigate(`/${href}`);
     } else {
       // The lazy chunk for this section has not mounted yet; setting the hash
       // hands off to the hashchange listener, which waits for it to appear.
@@ -121,7 +134,7 @@ export const Navbar: FC = () => {
       >
         {/* Brand Monogram */}
         <a
-          href="#hero"
+          href={hrefFor('#hero')}
           onClick={(e) => {
             e.preventDefault();
             handleNavClick('#hero');
@@ -144,7 +157,7 @@ export const Navbar: FC = () => {
             return (
               <a
                 key={item.name}
-                href={item.href}
+                href={hrefFor(item.href)}
                 onClick={(e) => {
                   e.preventDefault();
                   handleNavClick(item.href);
@@ -181,7 +194,7 @@ export const Navbar: FC = () => {
             <Github className="w-4 h-4" />
           </a>
           <a
-            href="#contact"
+            href={hrefFor('#contact')}
             onClick={(e) => {
               e.preventDefault();
               handleNavClick('#contact');
@@ -224,7 +237,7 @@ export const Navbar: FC = () => {
                 return (
                   <a
                     key={item.name}
-                    href={item.href}
+                    href={hrefFor(item.href)}
                     onClick={(e) => {
                       e.preventDefault();
                       handleNavClick(item.href);
@@ -251,7 +264,7 @@ export const Navbar: FC = () => {
                   <span>GitHub</span>
                 </a>
                 <a
-                  href="#contact"
+                  href={hrefFor('#contact')}
                   onClick={(e) => {
                     e.preventDefault();
                     handleNavClick('#contact');

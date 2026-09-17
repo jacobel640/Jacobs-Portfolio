@@ -2,19 +2,25 @@
 /**
  * scripts/verify-prerender.mjs
  *
- * Guards the property the prerender exists for: that `dist/index.html` carries
- * the page's content as HTML, readable without executing the bundle.
+ * Guards the property the prerender exists for: that every route ships as HTML
+ * carrying its own content and its own head, readable without executing the
+ * bundle.
  *
  * A regression here is silent — the site looks perfect in a browser while
  * crawlers, unfurlers and LLM fetchers see an empty document — so the checks
- * are on the shipped artefact rather than on the source that produces it.
+ * are on the shipped artefacts rather than on the source that produces them.
  *
- * Assertions:
- * 1. `#root` is not empty.
- * 2. The prerendered markup carries a substantial amount of real text.
- * 3. Each section landmark (hero/skills/projects/contact) is present.
- * 4. Every project title from the data file appears in the HTML.
- * 5. The head still carries title, description and the Open Graph tags.
+ * Assertions, per route:
+ * 1. The route's HTML file exists and `#root` is not empty.
+ * 2. It carries a substantial amount of real text.
+ * 3. Its title, canonical and og:url are its own, not the template's.
+ * Across the site:
+ * 4. Every project page includes prose that only exists in `detailedContent`,
+ *    which is what used to be trapped behind the modal.
+ * 5. The home page links to every project page.
+ * 6. sitemap.xml lists every route, and 404.html exists.
+ * 7. A project's route matches the name of its GitHub repository, so the two
+ *    cannot drift apart after a repo is renamed.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -23,90 +29,152 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DIST_INDEX_HTML = join(ROOT_DIR, 'dist', 'index.html');
+const DIST_DIR = join(ROOT_DIR, 'dist');
 const PROJECTS_SRC = join(ROOT_DIR, 'src', 'data', 'projects.ts');
 
-/** Comfortably above the skeletons, comfortably below the real page (~4.7k). */
-const MIN_TEXT_CHARS = 2000;
-
-const SECTION_IDS = ['hero', 'skills', 'projects', 'contact'];
-
-const HEAD_TAGS = [
-  '<title>',
-  'name="description"',
-  'property="og:title"',
-  'property="og:description"',
-  'property="og:image"',
-];
-
-console.log('\n============================================================');
-console.log('🧪 TEST: Prerendered HTML Verification');
-console.log('============================================================');
+/** Comfortably above the skeletons, comfortably below any real page. */
+const MIN_HOME_CHARS = 2000;
+const MIN_PROJECT_CHARS = 1500;
 
 const failures = [];
+const rows = [];
 
-if (!existsSync(DIST_INDEX_HTML)) {
-  console.error(`\n❌ PRERENDER VERIFICATION FAILED:\n  1. Missing ${DIST_INDEX_HTML}. Run \`npm run build\` first.`);
+console.log('\n============================================================');
+console.log('🧪 TEST: Prerendered Static Routes');
+console.log('============================================================');
+
+if (!existsSync(join(DIST_DIR, 'index.html'))) {
+  console.error('\n❌ FAILED:\n  1. dist/index.html is missing. Run `npm run build` first.');
   process.exit(1);
 }
 
-const html = await readFile(DIST_INDEX_HTML, 'utf8');
+const rootMarkupOf = (html) => {
+  const match = html.match(/<div id="root">([\s\S]*)<\/div>\s*<\/body>/);
+  return match?.[1] ?? '';
+};
 
-// 1. #root must have been filled in.
-const rootMatch = html.match(/<div id="root">([\s\S]*)<\/div>\s*<\/body>/);
-const rootMarkup = rootMatch?.[1] ?? '';
-if (!rootMarkup.trim()) {
-  failures.push('#root is empty — the prerender pass did not run or produced nothing.');
-}
+const textOf = (markup) =>
+  markup
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-// 2. That markup must be mostly content, not a wrapper full of empty divs.
-const text = rootMarkup
-  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-  .replace(/<[^>]*>/g, ' ')
-  .replace(/&#x27;/g, "'")
-  .replace(/&amp;/g, '&')
-  .replace(/\s+/g, ' ')
-  .trim();
-if (text.length < MIN_TEXT_CHARS) {
-  failures.push(
-    `Prerendered text is ${text.length} chars, expected at least ${MIN_TEXT_CHARS}. ` +
-      'Suspense fallbacks may have been serialised instead of the resolved sections.'
-  );
-}
+const tagOf = (html, pattern) => html.match(pattern)?.[1] ?? '';
 
-// 3. Every section landmark should be reachable by anchor without JavaScript.
-for (const id of SECTION_IDS) {
-  if (!rootMarkup.includes(`id="${id}"`)) {
-    failures.push(`Section landmark id="${id}" missing from the prerendered markup.`);
-  }
-}
-
-// 4. Project titles are the content most worth indexing, so check them by name.
+// Parse the project ids, titles and a distinctive detail phrase from the data file.
 const projectsSrc = await readFile(PROJECTS_SRC, 'utf8');
-const titles = [...projectsSrc.matchAll(/^\s{4}title:\s*'([^']+)'/gm)].map((m) => m[1]);
-if (titles.length === 0) {
-  failures.push(`Could not read any project titles from ${PROJECTS_SRC}.`);
-}
-// The renderer escapes quotes, so compare on the same escaping the HTML uses.
-const escaped = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
-const missingTitles = titles.filter((t) => !rootMarkup.includes(escaped(t)));
-if (missingTitles.length > 0) {
-  failures.push(`Project titles absent from prerendered HTML: ${missingTitles.join(', ')}`);
-}
+const blocks = projectsSrc.split(/\n  \{\n/).slice(1);
+const projects = blocks
+  .map((block) => ({
+    id: block.match(/^\s*id: '([^']+)'/m)?.[1],
+    title: block.match(/^\s*title: '([^']+)'/m)?.[1],
+    // Private projects have no repository, so there is nothing to match.
+    repo: block.match(/^\s*github: '([^']+)'/m)?.[1]?.replace(/\/$/, '').split('/').pop(),
+    // The longest overview sentence fragment: present only in detailedContent.
+    detail: (block.match(/overview: \[\s*\n\s*'([^']{40,200})/m)?.[1] ?? '')
+      .replace(/\*\*/g, '')
+      .split(/[.,—]/)[0]
+      .trim(),
+  }))
+  .filter((project) => project.id && project.title);
 
-// 5. The prerender rewrites index.html, so confirm it did not eat the head.
-for (const tag of HEAD_TAGS) {
-  if (!html.includes(tag)) {
-    failures.push(`Head tag ${tag} missing from dist/index.html.`);
+if (projects.length === 0) failures.push(`Could not parse any projects from ${PROJECTS_SRC}.`);
+
+const homeHtml = await readFile(join(DIST_DIR, 'index.html'), 'utf8');
+const homeText = textOf(rootMarkupOf(homeHtml));
+rows.push(['/', homeText.length, tagOf(homeHtml, /<title>([^<]*)<\/title>/)]);
+
+if (homeText.length < MIN_HOME_CHARS) {
+  failures.push(`Home page has ${homeText.length} chars of text, expected ≥ ${MIN_HOME_CHARS}.`);
+}
+for (const id of ['hero', 'skills', 'projects', 'contact']) {
+  if (!rootMarkupOf(homeHtml).includes(`id="${id}"`)) {
+    failures.push(`Home page is missing section landmark id="${id}".`);
   }
 }
 
-console.log('\n--- Prerender Summary ---');
-console.log(`📄 File: ${DIST_INDEX_HTML}`);
-console.log(`📏 Markup in #root: ${rootMarkup.length.toLocaleString()} bytes`);
-console.log(`📝 Extractable text: ${text.length.toLocaleString()} chars`);
-console.log(`🔖 Sections found: ${SECTION_IDS.filter((id) => rootMarkup.includes(`id="${id}"`)).join(', ') || 'none'}`);
-console.log(`📦 Projects found: ${titles.length - missingTitles.length}/${titles.length}`);
+const seenTitles = new Map();
+seenTitles.set(tagOf(homeHtml, /<title>([^<]*)<\/title>/), '/');
+
+for (const project of projects) {
+  const routePath = `/projects/${project.id}`;
+  const file = join(DIST_DIR, 'projects', project.id, 'index.html');
+
+  if (!existsSync(file)) {
+    failures.push(`Missing prerendered page for ${routePath}.`);
+    continue;
+  }
+
+  const html = await readFile(file, 'utf8');
+  const text = textOf(rootMarkupOf(html));
+  const title = tagOf(html, /<title>([^<]*)<\/title>/);
+  rows.push([routePath, text.length, title]);
+
+  if (text.length < MIN_PROJECT_CHARS) {
+    failures.push(`${routePath} has ${text.length} chars of text, expected ≥ ${MIN_PROJECT_CHARS}.`);
+  }
+  if (!text.includes(project.title)) {
+    failures.push(`${routePath} does not contain its own title "${project.title}".`);
+  }
+  // The point of the exercise: prose that used to live only inside the modal.
+  if (project.detail && !text.includes(project.detail)) {
+    failures.push(`${routePath} is missing its case-study prose ("${project.detail.slice(0, 40)}…").`);
+  }
+  if (seenTitles.has(title)) {
+    failures.push(`${routePath} shares its <title> with ${seenTitles.get(title)} — the head was not rewritten.`);
+  }
+  seenTitles.set(title, routePath);
+
+  const canonical = tagOf(html, /<link rel="canonical" href="([^"]*)"/);
+  if (!canonical.endsWith(routePath)) {
+    failures.push(`${routePath} has canonical "${canonical}", which is not its own URL.`);
+  }
+  const ogUrl = tagOf(html, /<meta property="og:url" content="([^"]*)"/);
+  if (!ogUrl.endsWith(routePath)) {
+    failures.push(`${routePath} has og:url "${ogUrl}", which is not its own URL.`);
+  }
+
+  if (!homeHtml.includes(`href="${routePath}"`)) {
+    failures.push(`The home page has no crawlable link to ${routePath}.`);
+  }
+}
+
+// The route and the repository should be the same name.
+for (const project of projects) {
+  if (project.repo && project.id !== project.repo.toLowerCase()) {
+    failures.push(
+      `Project route "/projects/${project.id}" does not match its GitHub repo ` +
+        `"${project.repo}" — expected id "${project.repo.toLowerCase()}".`,
+    );
+  }
+}
+
+// Sitemap and 404.
+if (!existsSync(join(DIST_DIR, 'sitemap.xml'))) {
+  failures.push('dist/sitemap.xml is missing.');
+} else {
+  const sitemap = await readFile(join(DIST_DIR, 'sitemap.xml'), 'utf8');
+  const count = (sitemap.match(/<url>/g) ?? []).length;
+  if (count !== projects.length + 1) {
+    failures.push(`sitemap.xml lists ${count} URLs, expected ${projects.length + 1}.`);
+  }
+  for (const project of projects) {
+    if (!sitemap.includes(`/projects/${project.id}<`)) {
+      failures.push(`sitemap.xml is missing /projects/${project.id}.`);
+    }
+  }
+}
+if (!existsSync(join(DIST_DIR, '404.html'))) failures.push('dist/404.html is missing.');
+
+console.log('\n--- Prerendered routes ---');
+for (const [routePath, chars, title] of rows) {
+  console.log(`  ${routePath.padEnd(30)} ${String(chars).padStart(6)} chars   ${title.slice(0, 46)}`);
+}
+console.log(`\n  Total readable text: ${rows.reduce((sum, r) => sum + r[1], 0).toLocaleString()} chars`);
 
 if (failures.length > 0) {
   console.error('\n❌ PRERENDER VERIFICATION FAILED:');
@@ -114,5 +182,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('\n✅ PASS: dist/index.html contains the full page as static HTML.');
+console.log('\n✅ PASS: every route ships as static HTML with its own head and content.');
 process.exit(0);
