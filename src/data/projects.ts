@@ -38,7 +38,9 @@ export const thumbFor = (src: string): string =>
 
 export const projects: Project[] = [
   {
-    id: 'e-commerce-waba',
+    // Mirrors the private repo Minim4You-waba-wix. Private projects carry no
+    // `github` URL, so the name is noted here rather than derived from one.
+    id: 'minim4you-waba-wix',
     title: 'Minim4You Backend',
     category: 'Backend',
     categoryLabel: 'Automated E-Commerce & WABA',
@@ -117,6 +119,7 @@ export const projects: Project[] = [
     icon: Smartphone,
   },
   {
+    // Mirrors the private repo gio-manetti.
     id: 'gio-manetti',
     title: 'GIO MANETTI E-Commerce',
     category: 'Fullstack',
