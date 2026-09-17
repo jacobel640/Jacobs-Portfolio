@@ -42,7 +42,18 @@ export const HOME_META: RouteMeta = {
   ogType: 'website',
 };
 
-export const projectPath = (project: Project): string => `/projects/${project.id}`;
+/**
+ * A project's URL, with the trailing slash the host actually serves.
+ *
+ * Netlify answers `/projects/taskflow` with a 301 to `/projects/taskflow/`,
+ * so the slashless form is a redirect, not a page. Declaring it as the
+ * canonical URL would point every case study at a URL that redirects away from
+ * itself, and would make each crawler spend a hop to reach the content.
+ *
+ * Route matching is unaffected: `normalisePath` strips the slash, so both
+ * forms resolve to the same route.
+ */
+export const projectPath = (project: Project): string => `/projects/${project.id}/`;
 
 export function projectMeta(project: Project): RouteMeta {
   const description = clampDescription(project.description);
