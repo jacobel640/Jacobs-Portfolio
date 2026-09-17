@@ -19,6 +19,8 @@
  *    which is what used to be trapped behind the modal.
  * 5. The home page links to every project page.
  * 6. sitemap.xml lists every route, and 404.html exists.
+ * 7. A project's route matches the name of its GitHub repository, so the two
+ *    cannot drift apart after a repo is renamed.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -70,6 +72,8 @@ const projects = blocks
   .map((block) => ({
     id: block.match(/^\s*id: '([^']+)'/m)?.[1],
     title: block.match(/^\s*title: '([^']+)'/m)?.[1],
+    // Private projects have no repository, so there is nothing to match.
+    repo: block.match(/^\s*github: '([^']+)'/m)?.[1]?.replace(/\/$/, '').split('/').pop(),
     // The longest overview sentence fragment: present only in detailedContent.
     detail: (block.match(/overview: \[\s*\n\s*'([^']{40,200})/m)?.[1] ?? '')
       .replace(/\*\*/g, '')
@@ -136,6 +140,16 @@ for (const project of projects) {
 
   if (!homeHtml.includes(`href="${routePath}"`)) {
     failures.push(`The home page has no crawlable link to ${routePath}.`);
+  }
+}
+
+// The route and the repository should be the same name.
+for (const project of projects) {
+  if (project.repo && project.id !== project.repo.toLowerCase()) {
+    failures.push(
+      `Project route "/projects/${project.id}" does not match its GitHub repo ` +
+        `"${project.repo}" — expected id "${project.repo.toLowerCase()}".`,
+    );
   }
 }
 

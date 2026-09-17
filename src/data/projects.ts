@@ -151,7 +151,7 @@ export const projects: Project[] = [
     icon: Globe,
   },
   {
-    id: 'tzachi-community',
+    id: 'tzachiapp',
     title: 'Tzachi (צח"י) Application',
     category: 'Android',
     categoryLabel: 'Published Native App',
@@ -186,7 +186,7 @@ export const projects: Project[] = [
     icon: Smartphone,
   },
   {
-    id: 'files-app',
+    id: 'files',
     title: 'Advanced File Manager',
     category: 'Android',
     categoryLabel: 'Native Utility App',
@@ -234,7 +234,7 @@ export const projects: Project[] = [
     icon: Smartphone,
   },
   {
-    id: 'whatsapp-status',
+    id: 'statussaver',
     title: 'WhatsApp Status Utility',
     category: 'Android',
     categoryLabel: 'Android Utility App',
