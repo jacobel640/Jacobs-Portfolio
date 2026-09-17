@@ -1,9 +1,45 @@
-import { defineConfig } from 'vite';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+/**
+ * Makes `npm run preview` resolve directory indexes the way the host does.
+ *
+ * The build writes one file per route — `/projects/taskflow` is
+ * `dist/projects/taskflow/index.html` — and Netlify serves it directly. Vite's
+ * preview server is an SPA server: it hands any extensionless path back to the
+ * root `index.html`, so every project URL previewed as the home page with the
+ * case study hydrating over it. That is a convincing imitation of a hydration
+ * bug, and it is worth not having to diagnose twice.
+ */
+function serveDirectoryIndexes(): Plugin {
+  return {
+    name: 'serve-directory-indexes',
+    configurePreviewServer(server) {
+      const outDir = join(server.config.root, server.config.build.outDir);
+      server.middlewares.use((req, _res, next) => {
+        const path = (req.url ?? '/').split('?')[0];
+        if (path !== '/' && !path.includes('.')) {
+          const trimmed = path.replace(/\/$/, '');
+          if (existsSync(join(outDir, trimmed, 'index.html'))) {
+            req.url = `${trimmed}/index.html`;
+          } else if (existsSync(join(outDir, '404.html'))) {
+            // What the host does with an unmatched path. Without this the SPA
+            // fallback returns the home page, and the 404 page hydrates over
+            // the wrong markup.
+            req.url = '/404.html';
+          }
+        }
+        next();
+      });
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), serveDirectoryIndexes()],
   build: {
     target: 'es2020',
     cssCodeSplit: true,
