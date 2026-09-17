@@ -101,7 +101,8 @@ const seenTitles = new Map();
 seenTitles.set(tagOf(homeHtml, /<title>([^<]*)<\/title>/), '/');
 
 for (const project of projects) {
-  const routePath = `/projects/${project.id}`;
+  // The trailing slash is the form the host serves and the site declares.
+  const routePath = `/projects/${project.id}/`;
   const file = join(DIST_DIR, 'projects', project.id, 'index.html');
 
   if (!existsSync(file)) {
@@ -163,8 +164,10 @@ if (!existsSync(join(DIST_DIR, 'sitemap.xml'))) {
     failures.push(`sitemap.xml lists ${count} URLs, expected ${projects.length + 1}.`);
   }
   for (const project of projects) {
-    if (!sitemap.includes(`/projects/${project.id}<`)) {
-      failures.push(`sitemap.xml is missing /projects/${project.id}.`);
+    // Matched with the trailing slash so the sitemap cannot quietly go back to
+    // listing URLs that redirect.
+    if (!sitemap.includes(`/projects/${project.id}/</loc>`)) {
+      failures.push(`sitemap.xml is missing /projects/${project.id}/.`);
     }
   }
 }
