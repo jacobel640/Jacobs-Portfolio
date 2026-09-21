@@ -67,7 +67,9 @@ const tagOf = (html, pattern) => html.match(pattern)?.[1] ?? '';
 
 // Parse the project ids, titles and a distinctive detail phrase from the data file.
 const projectsSrc = await readFile(PROJECTS_SRC, 'utf8');
-const blocks = projectsSrc.split(/\n  \{\n/).slice(1);
+// Line endings are normalised first: a Windows checkout has CRLF, and the
+// patterns below would otherwise find no projects at all.
+const blocks = projectsSrc.replace(/\r\n/g, '\n').split(/\n  \{\n/).slice(1);
 const projects = blocks
   .map((block) => ({
     id: block.match(/^\s*id: '([^']+)'/m)?.[1],
