@@ -245,7 +245,7 @@ export const Projects: FC = () => {
                           href={project.demo}
                           target="_blank"
                           rel="noopener noreferrer"
-                          aria-label={`${project.title} live`}
+                          aria-label={`${project.title} live on Google Play`}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors"
                         >
                           <ExternalLink className="w-3 h-3" />
