@@ -21,6 +21,8 @@
  * 6. sitemap.xml lists every route, and 404.html exists.
  * 7. A project's route matches the name of its GitHub repository, so the two
  *    cannot drift apart after a repo is renamed.
+ * 8. robots.txt blocks nothing and names the AI crawlers explicitly — the
+ *    whole point of prerendering is that those crawlers can read the pages.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -172,6 +174,31 @@ if (!existsSync(join(DIST_DIR, 'sitemap.xml'))) {
   }
 }
 if (!existsSync(join(DIST_DIR, '404.html'))) failures.push('dist/404.html is missing.');
+
+// robots.txt. Prerendering every route is pointless if the file tells the
+// crawlers to stay away, and an opt-out is a one-line change nobody notices.
+if (!existsSync(join(DIST_DIR, 'robots.txt'))) {
+  failures.push('dist/robots.txt is missing.');
+} else {
+  const robots = await readFile(join(DIST_DIR, 'robots.txt'), 'utf8');
+
+  // A bare `Disallow: /` blocks the whole site for whichever group it sits in.
+  const blanketBlock = robots
+    .split('\n')
+    .some((line) => /^\s*Disallow:\s*\/\s*$/i.test(line));
+  if (blanketBlock) failures.push('robots.txt contains a blanket "Disallow: /".');
+
+  // Google-Extended governs Gemini grounding and is a separate token from
+  // Googlebot, so being crawlable does not imply it.
+  for (const agent of ['Google-Extended', 'GPTBot', 'ClaudeBot', 'PerplexityBot', 'Applebot-Extended']) {
+    const group = new RegExp(`^\\s*User-agent:\\s*${agent}\\s*$`, 'im');
+    if (!group.test(robots)) {
+      failures.push(`robots.txt does not name ${agent} explicitly.`);
+    }
+  }
+
+  if (!robots.includes('Sitemap:')) failures.push('robots.txt does not point at the sitemap.');
+}
 
 console.log('\n--- Prerendered routes ---');
 for (const [routePath, chars, title] of rows) {
