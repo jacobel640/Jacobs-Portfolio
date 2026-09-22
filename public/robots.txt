@@ -1,4 +1,62 @@
+# Everything here is public and may be crawled, indexed and used to answer
+# questions about Jacob Elcharar's work.
+
 User-agent: *
+Allow: /
+
+# The AI crawlers and answer engines are named explicitly rather than left to
+# the wildcard above. In robots.txt a named group replaces the `*` group for
+# that crawler, so each of these states the permission outright instead of
+# depending on a fallback — which is the difference between "allowed" and
+# "allowed unless something reads the file conservatively".
+
+# Google. Google-Extended is a separate token from Googlebot and is what
+# governs Gemini grounding and AI answers; crawling as Googlebot does not
+# imply it.
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# OpenAI. GPTBot trains and indexes, OAI-SearchBot serves search results, and
+# ChatGPT-User is a live fetch on someone's behalf.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# Apple. Applebot-Extended governs Apple Intelligence, as Google-Extended does
+# for Gemini.
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Microsoft
+User-agent: Bingbot
 Allow: /
 
 Sitemap: https://jacobelcharar.dev/sitemap.xml
