@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Folder, Github, Lock, ExternalLink, ArrowRight } from 'lucide-react';
+import { Folder, Github, Lock, ExternalLink, ArrowRight, Check } from 'lucide-react';
 import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect';
 import { projects } from '../data/projects';
 import type { FilterType } from '../data/projects';
@@ -114,9 +114,6 @@ export const Projects: FC = () => {
 
   return (
     <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="ambient-glow absolute top-1/3 right-1/4 w-[32rem] h-[32rem] bg-blue-900/10 rounded-full blur-[130px] pointer-events-none" />
-
       {/* Section Header */}
       <div className="relative z-10 text-center mb-14">
         <motion.div
@@ -124,9 +121,9 @@ export const Projects: FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-blue-500/10 text-blue-300 border border-blue-500/25 mb-4 shadow-sm"
+          className="inline-flex items-center gap-2 h-8 px-4 rounded-full text-xs font-medium uppercase tracking-wider bg-md-surface-container-high text-md-on-surface-variant border border-md-outline-variant mb-4"
         >
-          <Folder className="w-3.5 h-3.5 text-blue-400" />
+          <Folder className="w-3.5 h-3.5 text-md-primary" />
           <span>Featured Portfolio</span>
         </motion.div>
 
@@ -135,7 +132,7 @@ export const Projects: FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white"
+          className="text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-md-on-surface"
         >
           Projects &amp; Case Studies
         </motion.h2>
@@ -145,7 +142,7 @@ export const Projects: FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-4 text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed"
+          className="mt-4 text-base sm:text-lg text-md-on-surface-variant max-w-2xl mx-auto leading-relaxed"
         >
           Explore a curated selection of native mobile applications, robust backend microservices, and fullstack platforms engineered for performance and scalability.
         </motion.p>
@@ -162,7 +159,7 @@ export const Projects: FC = () => {
           ref={filterBarRef}
           role="group"
           aria-label="Filter projects by category"
-          className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-white/[0.08] backdrop-blur-xl"
+          className="flex flex-wrap items-center justify-center gap-2"
         >
           {filterTabs.map((tab) => {
             const isActive = activeFilter === tab;
@@ -172,20 +169,14 @@ export const Projects: FC = () => {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => selectFilter(tab)}
-                className={`relative px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                className={`state-layer md-focus inline-flex items-center gap-2 h-10 rounded-full text-sm font-medium border transition-colors duration-medium ease-emphasized ${
                   isActive
-                    ? 'text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                    ? 'pl-3 pr-4 bg-md-secondary-container text-md-on-secondary-container border-transparent'
+                    : 'px-4 bg-transparent text-md-on-surface-variant border-md-outline'
                 }`}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeFilterTabIndicator"
-                    className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 border border-blue-400/30"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{tab}</span>
+                {isActive && <Check className="w-[18px] h-[18px]" />}
+                <span>{tab}</span>
               </button>
             );
           })}
@@ -207,23 +198,20 @@ export const Projects: FC = () => {
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
                 onClick={() => navigate(projectPath(project))}
-                className="group relative flex flex-col justify-between rounded-3xl bg-slate-900/50 hover:bg-slate-900/80 border border-white/[0.08] hover:border-white/[0.22] p-6 sm:p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 backdrop-blur-xl cursor-pointer overflow-hidden focus-within:border-white/[0.22]"
+                className="state-layer state-layer-within group relative flex flex-col justify-between rounded-3xl bg-md-surface-container border border-md-outline-variant shadow-md-1 hover:shadow-md-2 p-6 sm:p-7 transition-shadow duration-medium ease-emphasized cursor-pointer"
               >
-                {/* Subtle top card glow */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
                 {/* Card Content Top */}
                 <div>
                   <div className="flex items-center justify-between gap-4 mb-5">
-                    <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-105 group-hover:bg-blue-500/20 transition-all duration-300">
+                    <div className="p-3 rounded-2xl bg-md-primary-container text-md-on-primary-container">
                       <IconComponent className="w-5 h-5" />
                     </div>
 
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       {project.isPrivate ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/60">
+                        <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium bg-md-surface-container-highest text-md-on-surface-variant">
                           <Lock className="w-3 h-3" />
                           Private
                         </span>
@@ -233,7 +221,7 @@ export const Projects: FC = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`${project.title} source code on GitHub`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
+                          className="state-layer md-focus inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium text-md-on-surface-variant border border-md-outline-variant"
                         >
                           <Github className="w-3 h-3" />
                           Code
@@ -246,7 +234,7 @@ export const Projects: FC = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`${project.title} live on Google Play`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors"
+                          className="state-layer md-focus inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium bg-md-success/15 text-md-success border border-md-success/30"
                         >
                           <ExternalLink className="w-3 h-3" />
                           Live
@@ -255,37 +243,37 @@ export const Projects: FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-blue-400 mb-2">
+                  <div className="text-xs font-medium uppercase tracking-wider text-md-primary mb-2">
                     {project.categoryLabel}
                   </div>
 
-                  <h3 className="text-xl font-bold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-blue-300 transition-all mb-3">
+                  <h3 className="text-xl font-medium text-md-on-surface mb-3">
                     <Link
                       to={projectPath(project)}
-                      className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 rounded-lg"
+                      className="md-focus rounded-lg"
                     >
                       {project.title}
                     </Link>
                   </h3>
 
-                  <p className="text-sm text-slate-300/80 leading-relaxed line-clamp-3 mb-6">
+                  <p className="text-sm text-md-on-surface-variant leading-relaxed line-clamp-3 mb-6">
                     {project.description}
                   </p>
                 </div>
 
                 {/* Card Content Bottom / Tags */}
-                <div className="pt-4 border-t border-white/[0.06]">
-                  <div className="flex flex-wrap gap-1.5 mb-4">
+                <div className="pt-4 border-t border-md-outline-variant">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-4">
                     {project.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white/[0.04] text-slate-300 border border-white/[0.06]"
+                        className="inline-flex items-center h-7 px-3 text-xs font-medium rounded-full bg-md-surface-container-high text-md-on-surface-variant"
                       >
                         {tag}
                       </span>
                     ))}
                     {project.tags.length > 3 && (
-                      <span className="px-2 py-1 text-[11px] font-medium rounded-lg text-slate-400">
+                      <span className="px-2 text-xs font-medium text-md-on-surface-variant">
                         +{project.tags.length - 3} more
                       </span>
                     )}
@@ -294,10 +282,10 @@ export const Projects: FC = () => {
                   <Link
                     to={projectPath(project)}
                     aria-label={`Read the ${project.title} case study`}
-                    className="flex w-full items-center justify-between rounded-lg text-xs font-semibold text-blue-400 group-hover:text-blue-300 transition-colors pt-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                    className="state-layer md-focus flex w-full items-center justify-between rounded-full text-sm font-medium text-md-primary px-4 py-2.5"
                   >
                     <span>View Case Study &amp; Details</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-medium ease-emphasized" />
                   </Link>
                 </div>
               </motion.div>

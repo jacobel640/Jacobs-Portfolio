@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FC } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Code2, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { Menu, X, Code2, MessageCircle, Github } from 'lucide-react';
 import { useRouter, normalisePath } from '../router-core';
 
 interface NavItem {
@@ -9,6 +9,9 @@ interface NavItem {
 }
 
 const GITHUB_URL = 'https://github.com/jacobel640';
+
+/** MD3 emphasized easing, for Framer Motion. */
+const EMPHASIZED = [0.2, 0, 0, 1] as const;
 
 const navItems: NavItem[] = [
   { name: 'About', href: '#hero' },
@@ -124,12 +127,14 @@ export const Navbar: FC = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 pt-4 sm:pt-6 pointer-events-none">
+      {/* MD3 elevated top app bar, floating: a tonal surface container lifted by
+          an elevation shadow rather than by blur. */}
       <nav
         aria-label="Main Navigation"
-        className={`pointer-events-auto flex items-center justify-between w-full max-w-5xl px-4 sm:px-6 py-2.5 sm:py-3 rounded-full transition-all duration-300 ${
+        className={`pointer-events-auto flex items-center justify-between w-full max-w-5xl px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border border-md-outline-variant transition-[background-color,box-shadow] duration-medium ease-emphasized ${
           isScrolled
-            ? 'bg-slate-900/75 backdrop-blur-xl border border-white/[0.12] shadow-2xl shadow-black/50'
-            : 'bg-slate-900/50 backdrop-blur-lg border border-white/[0.08] shadow-lg shadow-black/20'
+            ? 'bg-md-surface-container-high/95 shadow-md-3'
+            : 'bg-md-surface-container/90 shadow-md-1'
         }`}
       >
         {/* Brand Monogram */}
@@ -139,18 +144,18 @@ export const Navbar: FC = () => {
             e.preventDefault();
             handleNavClick('#hero');
           }}
-          className="group flex items-center gap-2.5 text-white font-bold tracking-tight rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+          className="state-layer md-focus group flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full text-md-on-surface"
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <Code2 className="w-4 h-4 text-white" />
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-md-primary-container text-md-on-primary-container">
+            <Code2 className="w-4 h-4" />
           </div>
-          <span className="text-base sm:text-lg font-semibold tracking-tight text-white group-hover:text-blue-400 transition-colors">
-            Jacob<span className="text-blue-400 font-normal">.dev</span>
+          <span className="text-base sm:text-lg font-medium tracking-tight">
+            Jacob<span className="text-md-primary font-normal">.dev</span>
           </span>
         </a>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-1 bg-slate-950/40 p-1 rounded-full border border-white/[0.06]">
+        <div className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
             const sectionId = item.href.replace('#', '');
             const isActive = activeSection === sectionId;
@@ -163,17 +168,16 @@ export const Navbar: FC = () => {
                   handleNavClick(item.href);
                 }}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
-                  isActive
-                    ? 'text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                className={`state-layer md-focus relative px-4 py-2 text-sm font-medium rounded-full transition-colors duration-medium ease-emphasized ${
+                  isActive ? 'text-md-on-secondary-container' : 'text-md-on-surface-variant'
                 }`}
               >
+                {/* MD3 active pill indicator, slid between destinations. */}
                 {isActive && (
                   <motion.div
                     layoutId="activeNavbarIndicator"
-                    className="absolute inset-0 bg-gradient-to-r from-blue-600/80 to-indigo-600/80 rounded-full shadow-md shadow-blue-500/20 border border-blue-400/30"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    className="absolute inset-0 bg-md-secondary-container rounded-full"
+                    transition={{ duration: 0.35, ease: EMPHASIZED }}
                   />
                 )}
                 <span className="relative z-10">{item.name}</span>
@@ -183,15 +187,15 @@ export const Navbar: FC = () => {
         </div>
 
         {/* Desktop Quick Actions */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-slate-400 hover:text-white rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] transition-all"
+            className="state-layer md-focus p-2.5 text-md-on-surface-variant rounded-full"
             aria-label="GitHub Profile"
           >
-            <Github className="w-4 h-4" />
+            <Github className="w-5 h-5" />
           </a>
           <a
             href={hrefFor('#contact')}
@@ -199,10 +203,10 @@ export const Navbar: FC = () => {
               e.preventDefault();
               handleNavClick('#contact');
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-500/25 transition-all hover:scale-105"
+            className="state-layer md-focus inline-flex items-center gap-2 pl-4 pr-5 py-2.5 text-sm font-medium rounded-full bg-md-primary text-md-on-primary transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
           >
+            <MessageCircle className="w-[18px] h-[18px]" />
             <span>Let's Talk</span>
-            <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </div>
 
@@ -211,7 +215,7 @@ export const Navbar: FC = () => {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/60 border border-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+            className="state-layer md-focus p-2.5 rounded-full text-md-on-surface-variant"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -220,17 +224,17 @@ export const Navbar: FC = () => {
         </div>
       </nav>
 
-      {/* Mobile Drawer Dropdown */}
+      {/* Mobile Navigation Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -15, scale: 0.95 }}
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="pointer-events-auto absolute top-20 left-4 right-4 max-w-lg mx-auto bg-slate-900/90 backdrop-blur-2xl border border-white/[0.12] rounded-2xl p-5 shadow-2xl shadow-black/80 z-50"
+            exit={{ opacity: 0, y: -12, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: EMPHASIZED }}
+            className="pointer-events-auto absolute top-20 left-4 right-4 max-w-lg mx-auto bg-md-surface-container-high border border-md-outline-variant rounded-3xl p-3 shadow-md-3 z-50"
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {navItems.map((item) => {
                 const sectionId = item.href.replace('#', '');
                 const isActive = activeSection === sectionId;
@@ -242,25 +246,25 @@ export const Navbar: FC = () => {
                       e.preventDefault();
                       handleNavClick(item.href);
                     }}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`state-layer md-focus flex items-center px-5 h-14 rounded-full text-sm font-medium transition-colors duration-medium ease-emphasized ${
                       isActive
-                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                        : 'text-slate-300 hover:text-white hover:bg-white/[0.04]'
+                        ? 'bg-md-secondary-container text-md-on-secondary-container'
+                        : 'text-md-on-surface-variant'
                     }`}
                   >
                     <span>{item.name}</span>
-                    {isActive && <Sparkles className="w-4 h-4 text-blue-400" />}
                   </a>
                 );
               })}
-              <div className="pt-3 mt-1 border-t border-slate-800 flex items-center justify-between gap-3">
+              <div className="pt-3 mt-2 border-t border-md-outline-variant flex items-center justify-between gap-3">
                 <a
                   href={GITHUB_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 text-slate-300 text-xs font-medium border border-slate-700 w-1/2 justify-center"
+                  className="state-layer md-focus flex items-center gap-2 px-4 py-2.5 rounded-full border border-md-outline text-md-primary text-sm font-medium w-1/2 justify-center"
                 >
-                  <Github className="w-4 h-4" />
+                  <Github className="w-[18px] h-[18px]" />
                   <span>GitHub</span>
                 </a>
                 <a
@@ -269,10 +273,10 @@ export const Navbar: FC = () => {
                     e.preventDefault();
                     handleNavClick('#contact');
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium w-1/2 justify-center shadow-lg shadow-blue-500/20"
+                  className="state-layer md-focus flex items-center gap-2 px-4 py-2.5 rounded-full bg-md-primary text-md-on-primary text-sm font-medium w-1/2 justify-center"
                 >
+                  <MessageCircle className="w-[18px] h-[18px]" />
                   <span>Contact</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>

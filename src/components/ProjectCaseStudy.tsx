@@ -115,7 +115,7 @@ const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoad
 
     {!ready && !failed && (
       <span className="absolute inset-0 flex items-center justify-center" role="status">
-        <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
+        <Loader2 className="w-8 h-8 text-md-primary animate-spin" />
         <span className="sr-only">Loading full-resolution screenshot</span>
       </span>
     )}
@@ -354,7 +354,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
   // Keep the page still behind the lightbox. `removeProperty` rather than
   // setting 'unset' — the shorthand would also clear the `overflow-x: hidden`
-  // that keeps the ambient glows from causing horizontal scroll.
+  // that guards the page against horizontal scroll.
   useEffect(() => {
     if (lightboxOpen) document.body.style.overflow = 'hidden';
     else document.body.style.removeProperty('overflow');
@@ -389,51 +389,55 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   const Icon = project.icon;
 
   return (
-    <article className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-      <div className="ambient-glow absolute top-32 right-1/4 w-[32rem] h-[32rem] bg-blue-900/10 rounded-full blur-[130px] pointer-events-none" />
-
-      <div className="relative z-10">
-        <Link
-          to="/#projects"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-blue-300 transition-colors mb-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 rounded-lg"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>All projects</span>
-        </Link>
-
-        <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-white/[0.08]">
-          <div className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/25 inline-flex items-center justify-center w-fit">
-            <Icon className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-400 mb-1.5">
-              {project.categoryLabel}
-            </p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              {project.title}
-            </h1>
-          </div>
+    <article className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24">
+      {/* A large-container surface with its own top app bar. The case study is a
+          page rather than a modal (so it can be prerendered and linked), but it
+          reads as the same MD3 dialog surface. */}
+      <div className="relative z-10 rounded-3xl bg-md-surface-container-high border border-md-outline-variant shadow-md-2 overflow-hidden">
+        <div className="flex items-center justify-between gap-3 h-16 px-3 sm:px-4 bg-md-surface-container-highest border-b border-md-outline-variant">
+          <Link
+            to="/#projects"
+            className="state-layer md-focus inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full text-sm font-medium text-md-primary"
+          >
+            <ArrowLeft className="w-[18px] h-[18px]" />
+            <span>All projects</span>
+          </Link>
           {project.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/60 w-fit h-fit">
+            <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium bg-md-surface-container-high text-md-on-surface-variant">
               <Lock className="w-3 h-3" />
               Private
             </span>
           )}
+        </div>
+
+        <div className="p-5 sm:p-8 lg:p-10">
+        <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-md-outline-variant">
+          <div className="p-3.5 rounded-2xl bg-md-primary-container text-md-on-primary-container inline-flex items-center justify-center w-fit">
+            <Icon className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-md-primary mb-1.5">
+              {project.categoryLabel}
+            </p>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal text-md-on-surface tracking-tight">
+              {project.title}
+            </h1>
+          </div>
         </header>
 
         {/* The card blurb, as the page's standfirst. */}
-        <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-10">
+        <p className="text-base sm:text-lg text-md-on-surface-variant leading-relaxed mb-10">
           {project.description}
         </p>
 
         <div className="space-y-8">
                 {/* Overview */}
                 <div>
-                  <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-blue-400" />
+                  <h4 className="text-base font-medium text-md-on-surface mb-3 flex items-center gap-2">
+                    <Folder className="w-4 h-4 text-md-primary" />
                     <span>Project Overview</span>
                   </h4>
-                  <div className="space-y-4 text-slate-300 text-sm sm:text-base leading-relaxed bg-white/[0.02] p-5 sm:p-6 rounded-2xl border border-white/[0.06]">
+                  <div className="space-y-4 text-md-on-surface-variant text-sm sm:text-base leading-relaxed bg-md-surface-container-low p-5 sm:p-6 rounded-2xl border border-md-outline-variant">
                     {project.detailedContent.overview.map((paragraph, idx) => (
                       // The opening paragraph reads as a lead: slightly larger and
                       // brighter, so the eye has an obvious place to start.
@@ -441,7 +445,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                         key={idx}
                         className={
                           idx === 0
-                            ? 'text-base sm:text-lg text-slate-100 leading-relaxed'
+                            ? 'text-base sm:text-lg text-md-on-surface leading-relaxed'
                             : undefined
                         }
                       >
@@ -454,15 +458,15 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                 {/* Architecture & Features Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Architecture */}
-                  <div className="bg-slate-950/40 p-5 rounded-2xl border border-white/[0.06]">
-                    <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-2.5">
-                      <Server className="w-4 h-4 text-indigo-400" />
+                  <div className="bg-md-surface-container-low p-5 rounded-2xl border border-md-outline-variant">
+                    <h4 className="text-sm font-medium text-md-on-surface mb-4 flex items-center gap-2 border-b border-md-outline-variant pb-2.5">
+                      <Server className="w-4 h-4 text-md-secondary" />
                       <span>Architecture &amp; Engineering</span>
                     </h4>
                     <ul className="space-y-3">
                       {project.detailedContent.architecture.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-slate-300 text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        <li key={idx} className="flex items-start gap-2.5 text-md-on-surface-variant text-xs sm:text-sm">
+                          <CheckCircle2 className="w-4 h-4 text-md-success mt-0.5 shrink-0" />
                           <span className="leading-relaxed">{item}</span>
                         </li>
                       ))}
@@ -470,15 +474,15 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                   </div>
 
                   {/* Key Features */}
-                  <div className="bg-slate-950/40 p-5 rounded-2xl border border-white/[0.06]">
-                    <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-2.5">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
+                  <div className="bg-md-surface-container-low p-5 rounded-2xl border border-md-outline-variant">
+                    <h4 className="text-sm font-medium text-md-on-surface mb-4 flex items-center gap-2 border-b border-md-outline-variant pb-2.5">
+                      <Sparkles className="w-4 h-4 text-md-tertiary" />
                       <span>Key Features &amp; Highlights</span>
                     </h4>
                     <ul className="space-y-3">
                       {project.detailedContent.features.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-slate-300 text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                        <li key={idx} className="flex items-start gap-2.5 text-md-on-surface-variant text-xs sm:text-sm">
+                          <CheckCircle2 className="w-4 h-4 text-md-primary mt-0.5 shrink-0" />
                           <span className="leading-relaxed">{item}</span>
                         </li>
                       ))}
@@ -488,15 +492,15 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
                 {/* Tech Stack */}
                 <div>
-                  <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-purple-400" />
+                  <h4 className="text-base font-medium text-md-on-surface mb-3 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-md-tertiary" />
                     <span>Technology Stack</span>
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {project.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/[0.05] text-slate-200 border border-white/[0.08] shadow-sm"
+                        className="inline-flex items-center h-8 px-3.5 text-xs font-medium rounded-full bg-md-surface-container-highest text-md-on-surface"
                       >
                         {tag}
                       </span>
@@ -506,13 +510,13 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
                 {/* Screenshots & Media Section */}
                 <div>
-                  <h4 className="text-base font-bold text-white mb-4 flex items-center justify-between">
+                  <h4 className="text-base font-medium text-md-on-surface mb-4 flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-pink-400" />
+                      <ImageIcon className="w-4 h-4 text-md-secondary" />
                       <span>Screenshots &amp; Visual Artifacts</span>
                     </span>
                     {shots.length > 0 && (
-                      <span className="text-xs font-normal text-slate-400">
+                      <span className="text-xs font-normal text-md-on-surface-variant">
                         Click any image to zoom
                       </span>
                     )}
@@ -526,7 +530,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                             type="button"
                             onClick={() => openImage(index)}
                             aria-label={`Zoom: ${shot.caption}`}
-                            className="group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                            className="md-focus group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-md-outline-variant hover:border-md-outline shadow-md-1 hover:shadow-md-2 transition-[box-shadow,border-color] duration-medium ease-emphasized cursor-pointer"
                           >
                             <img
                               src={thumbFor(shot.src)}
@@ -540,24 +544,24 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                                 const img = e.currentTarget;
                                 if (img.src !== shot.src) img.src = shot.src;
                               }}
-                              className="block w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                              className="block w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] ease-emphasized"
                             />
-                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
-                              <span className="p-1.5 rounded-lg bg-blue-600/90 text-white">
+                            <span className="absolute inset-0 bg-gradient-to-t from-md-surface-dim/95 via-md-surface-dim/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
+                              <span className="p-1.5 rounded-full bg-md-primary text-md-on-primary">
                                 <ZoomIn className="w-3.5 h-3.5" />
                               </span>
                             </span>
                           </button>
-                          <figcaption className="mt-2 text-[11px] leading-snug text-slate-400 text-center px-1">
+                          <figcaption className="mt-2 text-[11px] leading-snug text-md-on-surface-variant text-center px-1">
                             {shot.caption}
                           </figcaption>
                         </figure>
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-white/[0.08] bg-slate-950/40 p-8 text-center backdrop-blur-sm">
-                      <ImageIcon className="w-10 h-10 mx-auto text-slate-500 mb-3 opacity-70" />
-                      <p className="text-sm font-medium text-slate-400">
+                    <div className="rounded-2xl border border-md-outline-variant bg-md-surface-container-low p-8 text-center">
+                      <ImageIcon className="w-10 h-10 mx-auto text-md-outline mb-3 opacity-70" />
+                      <p className="text-sm font-medium text-md-on-surface-variant">
                         No screenshots available to display
                       </p>
                     </div>
@@ -565,12 +569,12 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                 </div>
 
                 {/* Repository & Live Demo Actions */}
-                <div className="bg-slate-950/50 rounded-2xl p-5 sm:p-6 border border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-md-surface-container-low rounded-2xl p-5 sm:p-6 border border-md-outline-variant flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <h5 className="text-white font-semibold text-sm sm:text-base mb-1">
+                    <h5 className="text-md-on-surface font-medium text-sm sm:text-base mb-1">
                       Project Repository &amp; Delivery
                     </h5>
-                    <p className="text-xs sm:text-sm text-slate-400 max-w-md">
+                    <p className="text-xs sm:text-sm text-md-on-surface-variant max-w-md">
                       {project.isPrivate
                         ? 'This repository is private due to client confidentiality, enterprise credentials, or proprietary intellectual property.'
                         : 'Explore the full source code, commit history, and architectural implementation on GitHub.'}
@@ -579,7 +583,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
                   <div className="shrink-0 flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     {project.isPrivate ? (
-                      <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800/80 text-slate-400 border border-white/[0.06] text-xs sm:text-sm font-medium">
+                      <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-5 rounded-full bg-md-surface-container-highest text-md-on-surface-variant text-sm font-medium">
                         <Lock className="w-4 h-4" />
                         <span>Private Repository</span>
                       </div>
@@ -588,7 +592,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                         href={project.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                        className="state-layer md-focus w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-6 rounded-full bg-md-primary text-md-on-primary font-medium text-sm transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
                       >
                         <Github className="w-4 h-4" />
                         <span>Source Code</span>
@@ -600,7 +604,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                         href={project.demo}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+                        className="state-layer md-focus w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-6 rounded-full bg-md-secondary-container text-md-on-secondary-container font-medium text-sm transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
                       >
                         <ExternalLink className="w-4 h-4" />
                         <span>Live Demo</span>
@@ -609,13 +613,14 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                   </div>
                 </div>
         </div>
+        </div>
       </div>
 
       {/* Lightbox / Zoom Overlay */}
       <AnimatePresence>
         {selectedImage && (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-2xl"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/85"
             /* Every press starts out as a plain click; only a drag that actually
                engages flips the flag, and the next press clears it again, so a
                stale flag can never swallow a real dismissal. */
@@ -631,14 +636,14 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
               className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={closeLightbox}
                 autoFocus
-                className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white bg-white/[0.1] hover:bg-white/[0.2] border border-white/[0.15] rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+                className="state-layer md-focus absolute -top-14 right-0 p-2.5 text-md-on-surface-variant bg-md-surface-container-high rounded-full"
                 aria-label="Close image preview"
               >
                 <X className="w-5 h-5" />
@@ -656,7 +661,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                     onClick={() => goToImage(-1)}
                     aria-label="Previous screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
+                    className={`state-layer md-focus shrink-0 p-2 sm:p-2.5 rounded-full text-md-on-surface bg-md-surface-container-high shadow-md-2 transition-opacity duration-medium ease-emphasized ${
                       isSwiping
                         ? 'opacity-0 pointer-events-none'
                         : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
@@ -668,7 +673,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
                 <div
                   ref={frameRef}
-                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950 ${
+                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-md-outline-variant shadow-md-3 bg-md-surface-dim ${
                     canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full'
                   }`}
                 >
@@ -713,7 +718,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                     onClick={() => goToImage(1)}
                     aria-label="Next screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
+                    className={`state-layer md-focus shrink-0 p-2 sm:p-2.5 rounded-full text-md-on-surface bg-md-surface-container-high shadow-md-2 transition-opacity duration-medium ease-emphasized ${
                       isSwiping
                         ? 'opacity-0 pointer-events-none'
                         : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
@@ -725,14 +730,14 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
               </div>
 
               <p
-                className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide text-center px-2"
+                className="mt-3 text-xs sm:text-sm text-md-on-surface font-medium tracking-wide text-center px-2"
                 aria-live="polite"
               >
                 {selectedImage.caption}
               </p>
 
               {canNavigate && selectedIndex !== null && (
-                <p className="mt-1 text-[11px] text-slate-500 tracking-wide">
+                <p className="mt-1 text-[11px] text-md-on-surface-variant tracking-wide">
                   {selectedIndex + 1} / {shotCount}
                   <span className="sr-only">
                     {' '}
