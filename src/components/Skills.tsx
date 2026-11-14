@@ -9,6 +9,8 @@ import { Reveal, RevealItem } from './md/Reveal';
 import { SectionHeader } from './md/SectionHeader';
 
 interface SkillCategory {
+  /** Lets the hero's focus-area chips spotlight this card when they lead here. */
+  id: string;
   title: string;
   subtitle: string;
   icon: typeof Smartphone;
@@ -25,6 +27,7 @@ interface SkillCategory {
 
 const skillCategories: SkillCategory[] = [
   {
+    id: 'skill-android',
     title: 'Android Development',
     subtitle: 'Native Mobile Engineering',
     icon: Smartphone,
@@ -46,6 +49,7 @@ const skillCategories: SkillCategory[] = [
     highlights: ['Production Play Store Deployments', 'Custom Touch & Gesture Handling', 'Scoped Storage & Media APIs'],
   },
   {
+    id: 'skill-backend',
     title: 'Backend & Cloud Systems',
     subtitle: 'Scalable Services & Microservices',
     icon: Server,
@@ -67,6 +71,7 @@ const skillCategories: SkillCategory[] = [
     highlights: ['Enterprise Messaging Integration', 'Normalized Schema Optimization', 'Server-Side Rendering & Caching'],
   },
   {
+    id: 'skill-ai',
     title: 'AI Workflows & Dev Tools',
     subtitle: 'Next-Gen Engineering',
     icon: Cpu,
@@ -91,7 +96,7 @@ const skillCategories: SkillCategory[] = [
 
 export const Skills: FC = () => {
   return (
-    <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
+    <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-clip">
       <SectionHeader
         icon={Sparkles}
         eyebrow="Core Capabilities"
@@ -111,6 +116,7 @@ export const Skills: FC = () => {
           return (
             <RevealItem
               key={category.title}
+              id={category.id}
               whileHover={HOVER_LIFT}
               transition={HOVER_LIFT_TRANSITION}
               className={cn(
@@ -163,8 +169,16 @@ export const Skills: FC = () => {
                     <motion.li
                       key={skill}
                       variants={revealItem}
-                      // Inherits the card's tone: a chip deepens toward it on hover.
-                      className="md-tonal md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md text-md-on-surface-variant hover:text-md-on-surface border border-transparent [--md-tonal-base:var(--md-sys-color-surface-container-high)] [--md-tone-hover:20%] cursor-default"
+                      // Inherits the card's tone. A light wash at rest keeps the
+                      // chips distinct from the card; when the card is hovered
+                      // (and the card itself washes toward the tone) they step up
+                      // with it rather than dissolving into it.
+                      className={cn(
+                        'md-tonal md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md text-md-on-surface border cursor-default',
+                        '[--md-tonal-base:var(--md-sys-color-surface-container-high)]',
+                        '[--md-tone-rest:8%] [--md-tone-rest-border:18%] [--md-tone-hover:26%]',
+                        'group-hover:[--md-tone-rest:16%] group-hover:[--md-tone-rest-border:34%]',
+                      )}
                     >
                       <Check className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                       {skill}

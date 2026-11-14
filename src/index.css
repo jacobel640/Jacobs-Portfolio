@@ -6,6 +6,10 @@
   html {
     scroll-behavior: smooth;
     color-scheme: dark;
+    /* Keep the scrollbar's lane even while the lightbox locks scrolling.
+       Without it, hiding the overflow removes the bar, the layout widens by its
+       width, and the whole page jumps sideways the moment a screenshot opens. */
+    scrollbar-gutter: stable;
   }
 
   /* Every colour below is a role from the generated scheme (see
@@ -122,7 +126,8 @@
       box-shadow theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
       background-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
       border-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
-      color theme('transitionDuration.effects') theme('transitionTimingFunction.effects');
+      color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      opacity theme('transitionDuration.effects') theme('transitionTimingFunction.effects');
   }
 
   /*
@@ -168,6 +173,27 @@
     }
   }
 
+  /*
+   * A brief spotlight, set and cleared by `scrollToSection`: the surface takes
+   * its hover wash and a toned outline, settles in on the decelerate curve,
+   * then eases back over a full second. Colour only; nothing moves.
+   */
+  .md-tonal.is-spotlit {
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-hover, 10%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) 55%, var(--md-tonal-border));
+    transition-duration: 450ms;
+    transition-timing-function: cubic-bezier(0.05, 0.7, 0.1, 1);
+  }
+
+  .md-tonal.is-spotlit-out {
+    transition-duration: 1000ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
   /* On a tonal surface the wash is the hover state, so the ripple keeps only
      its press, in the surface's tone. Direct children only: a chip or button
      nested inside the surface keeps its own full state layer. */
@@ -210,18 +236,35 @@
   /* Which accent role a tonal surface (and its icon) takes. */
   .tone-primary {
     --md-tone: var(--md-sys-color-primary);
+    --md-on-tone: var(--md-sys-color-on-primary);
   }
 
   .tone-secondary {
     --md-tone: var(--md-sys-color-secondary);
+    --md-on-tone: var(--md-sys-color-on-secondary);
   }
 
   .tone-tertiary {
     --md-tone: var(--md-sys-color-tertiary);
+    --md-on-tone: var(--md-sys-color-on-tertiary);
   }
 
   /* The role itself, for an icon that should match its surface. */
   .text-tone {
     color: var(--md-tone, var(--md-sys-color-primary));
+  }
+
+  /* Content drawn on the role, e.g. an icon inside a filled tone badge. */
+  .text-on-tone {
+    color: var(--md-on-tone, var(--md-sys-color-on-primary));
+  }
+
+  .bg-tone {
+    background-color: var(--md-tone, var(--md-sys-color-primary));
+  }
+
+  /* A soft container of the role, for an icon badge at rest. */
+  .bg-tone-soft {
+    background-color: color-mix(in srgb, var(--md-tone, var(--md-sys-color-primary)) 18%, transparent);
   }
 }

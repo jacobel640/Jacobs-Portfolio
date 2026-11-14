@@ -156,8 +156,10 @@ export const Navbar: FC = () => {
           className="md-interactive group flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full text-md-on-surface"
         >
           <StateLayer />
-          <span className="md-shape-morph flex items-center justify-center w-9 h-9 rounded-[18px] group-hover:rounded-xl bg-md-primary-container text-md-on-primary-container">
-            <Code2 className="w-4 h-4" aria-hidden="true" />
+          {/* public/favicon.svg draws this exact mark: same 36px circle, 20px
+              glyph and stroke weight. Change one, change the other. */}
+          <span className="md-shape-morph flex items-center justify-center w-9 h-9 rounded-[18px] group-hover:rounded-xl bg-md-primary text-md-on-primary">
+            <Code2 className="w-5 h-5" strokeWidth={2.5} aria-hidden="true" />
           </span>
           <span className="text-title-md sm:text-title-lg tracking-tight">
             Jacob<span className="text-md-primary font-normal">.dev</span>

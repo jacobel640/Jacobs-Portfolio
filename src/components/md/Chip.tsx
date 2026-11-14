@@ -1,8 +1,9 @@
 import { FC, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { ArrowDown, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { scrollToSection } from '../../lib/scrollToSection';
 import { INDICATOR, motionScheme } from '../../theme/motion';
 import { TONE_CLASS } from '../../theme/tone';
 import type { Tone } from '../../theme/tone';
@@ -55,29 +56,61 @@ export const FilterChip: FC<FilterChipProps> = ({ selected, onSelect, children }
 );
 
 interface AssistChipProps {
-  icon?: LucideIcon;
-  /** The accent role the chip is washed with; its icon takes the same role. */
+  icon: LucideIcon;
+  /** The accent role the chip is washed with; its icon badge takes the same role. */
   tone?: Tone;
+  /** The section the chip leads to; it scrolls there like a navbar link. */
+  sectionId: string;
+  /** A card inside that section to spotlight on arrival. */
+  spotlightId?: string;
   className?: string;
   children: ReactNode;
 }
 
 /**
- * A static MD3 assist-chip lookalike, for labels that are not actions. It is a
- * tonal surface: a light wash of its role at rest, deeper on hover, with the
- * icon in the role itself, so the colour reads as one unit rather than a
- * coloured glyph on a grey pill.
+ * MD3 assist chip: a shortcut to the part of the page it names.
+ *
+ * A tonal surface with its icon in a soft badge of the same role. Hover
+ * deepens the wash and fills the badge, and a trailing arrow says where the
+ * chip leads; press ripples in the tone. Colour and opacity only, on the
+ * effects spring: nothing moves except the arrow, so a row of these reads as
+ * controls rather than decoration.
+ *
+ * It is a real link to `#sectionId`, so it works before hydration and without
+ * script; with script it scrolls smoothly and spotlights the matching card.
  */
-export const AssistChip: FC<AssistChipProps> = ({ icon: Icon, tone = 'primary', className, children }) => (
-  <span
+export const AssistChip: FC<AssistChipProps> = ({
+  icon: Icon,
+  tone = 'primary',
+  sectionId,
+  spotlightId,
+  className,
+  children,
+}) => (
+  <a
+    href={`#${sectionId}`}
+    onClick={(event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (scrollToSection(sectionId, spotlightId)) event.preventDefault();
+    }}
     className={cn(
-      'md-tonal md-shape-morph inline-flex items-center gap-2 h-8 px-4 rounded-lg text-label-lg text-md-on-surface border cursor-default',
+      'md-interactive md-tonal md-shape-morph group/chip inline-flex items-center gap-2.5 h-10 pl-1.5 pr-3 rounded-lg text-label-lg text-md-on-surface border',
       '[--md-tone-rest:8%] [--md-tone-rest-border:30%] [--md-tone-hover:16%]',
       TONE_CLASS[tone],
       className,
     )}
   >
-    {Icon && <Icon className="w-[18px] h-[18px] shrink-0 text-tone" aria-hidden="true" />}
+    <StateLayer shape="small" />
+    <span
+      className="md-shape-morph grid place-items-center w-7 h-7 rounded-md bg-tone-soft text-tone group-hover/chip:bg-tone group-hover/chip:text-on-tone"
+      aria-hidden="true"
+    >
+      <Icon className="w-4 h-4" />
+    </span>
     <span>{children}</span>
-  </span>
+    <ArrowDown
+      className="w-4 h-4 text-tone opacity-60 transition-[transform,opacity] duration-spatial ease-spatial group-hover/chip:opacity-100 group-hover/chip:translate-y-0.5"
+      aria-hidden="true"
+    />
+  </a>
 );

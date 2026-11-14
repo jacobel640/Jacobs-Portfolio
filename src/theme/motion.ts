@@ -54,7 +54,15 @@ const TOKENS = {
  * Framer Motion takes an absolute damping coefficient, while the MD3 tokens are
  * damping *ratios*. For a unit mass, c = ζ · 2√k.
  */
-const toTransition = ({ stiffness, dampingRatio }: SpringToken): Transition => ({
+/** Narrower than Framer's `Transition`, so it also fits `animate(value, ...)`. */
+export interface SpringTransition {
+  type: 'spring';
+  stiffness: number;
+  damping: number;
+  mass: number;
+}
+
+const toTransition = ({ stiffness, dampingRatio }: SpringToken): SpringTransition => ({
   type: 'spring',
   stiffness,
   damping: dampingRatio * 2 * Math.sqrt(stiffness),
@@ -62,7 +70,7 @@ const toTransition = ({ stiffness, dampingRatio }: SpringToken): Transition => (
 });
 
 type Scheme = typeof TOKENS;
-type Transitions<T> = { [K in keyof T]: T[K] extends SpringToken ? Transition : Transitions<T[K]> };
+type Transitions<T> = { [K in keyof T]: T[K] extends SpringToken ? SpringTransition : Transitions<T[K]> };
 
 const mapTokens = <T extends object>(tree: T): Transitions<T> =>
   Object.fromEntries(

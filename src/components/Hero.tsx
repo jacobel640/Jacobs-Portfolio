@@ -37,9 +37,9 @@ const RevealWords: FC<{ text: string; className?: string }> = ({ text, className
 );
 
 const DOMAINS = [
-  { icon: Smartphone, label: 'Native Android (Kotlin & Compose)', tone: 'primary' },
-  { icon: Server, label: 'Spring Boot & Cloud Microservices', tone: 'secondary' },
-  { icon: Cpu, label: 'AI Agents & Modern Tooling', tone: 'tertiary' },
+  { icon: Smartphone, label: 'Native Android (Kotlin & Compose)', tone: 'primary', spotlight: 'skill-android' },
+  { icon: Server, label: 'Spring Boot & Cloud Microservices', tone: 'secondary', spotlight: 'skill-backend' },
+  { icon: Cpu, label: 'AI Agents & Modern Tooling', tone: 'tertiary', spotlight: 'skill-ai' },
 ] as const;
 
 export const Hero: FC = () => {
@@ -56,7 +56,7 @@ export const Hero: FC = () => {
     <section
       ref={sectionRef}
       id="hero"
-      className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-hidden pt-28 pb-16"
+      className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-clip pt-28 pb-16"
     >
       {/* MD3 Expressive shapes as the hero's only ornament: tonal, slow, and
           well away from the copy. */}
@@ -90,9 +90,29 @@ export const Hero: FC = () => {
           className="text-display-sm sm:text-display-md lg:text-display-lg text-md-on-surface mb-6 text-balance"
         >
           <RevealWords text="Hi, I'm" />{' '}
-          {/* The name never splits across lines; the greeting wraps instead. */}
-          <span className="whitespace-nowrap">
-            <RevealWords text="Jacob Elcharar" className="text-md-primary" />
+          {/* The name never splits across lines; the greeting wraps instead.
+              On hover it brightens one tone step and a primary rule draws in
+              beneath it on the slow spatial spring: emphasis by typography,
+              not by effects. */}
+          <span className="group/name relative inline-block whitespace-nowrap cursor-default">
+            <RevealWords
+              text="Jacob Elcharar"
+              className="text-md-primary transition-colors duration-medium ease-emphasized group-hover/name:text-md-on-primary-container"
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute inset-x-[0.04em] -bottom-[0.1em] h-[0.06em] min-h-[3px] rounded-full bg-md-primary scale-x-0',
+                // Entering: drawn in from the start of the name on the slow
+                // spatial spring. Leaving: withdrawn quickly on the accelerate
+                // curve. CSS takes the timing of the state being entered, so
+                // each direction keeps its own; a spring run backwards settles
+                // with a visible stutter, which is what the exit used to do.
+                // The origin never changes, so leaving mid-draw cannot jump.
+                'origin-left transition-transform duration-short ease-emphasized-accelerate',
+                'group-hover/name:scale-x-100 group-hover/name:duration-spatial-slow group-hover/name:ease-spatial-slow',
+              )}
+            />
           </span>
         </motion.h1>
 
@@ -122,9 +142,9 @@ export const Hero: FC = () => {
           className="flex flex-wrap justify-center gap-2.5 mb-10"
           aria-label="Focus areas"
         >
-          {DOMAINS.map(({ icon, label, tone }) => (
+          {DOMAINS.map(({ icon, label, tone, spotlight }) => (
             <motion.li key={label} variants={revealItem}>
-              <AssistChip icon={icon} tone={tone} className="h-10">
+              <AssistChip icon={icon} tone={tone} sectionId="skills" spotlightId={spotlight}>
                 {label}
               </AssistChip>
             </motion.li>

@@ -97,7 +97,7 @@ export const Contact: FC = () => {
   const { icon: CopyIcon, text: copyText } = COPY_STATES[copyState];
 
   return (
-    <footer id="contact" className="relative bg-md-surface-container-lowest text-md-on-surface overflow-hidden pt-24 pb-12 border-t border-md-outline-variant/60">
+    <footer id="contact" className="relative bg-md-surface-container-lowest text-md-on-surface overflow-clip pt-24 pb-12 border-t border-md-outline-variant/60">
       {/* The footer's one ornament: the hero's shape language, quieter. */}
       <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[min(120vw,900px)] text-md-primary-container/15">
         <ExpressiveShape morph={['cookie12', 'cookie9']} period={26} />

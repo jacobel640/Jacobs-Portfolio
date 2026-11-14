@@ -123,7 +123,7 @@ export const Projects: FC = () => {
   const filteredProjects = projects.filter((project) => matches(project, activeFilter));
 
   return (
-    <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
+    <section id="projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-clip">
       <SectionHeader
         icon={Folder}
         eyebrow="Featured Portfolio"

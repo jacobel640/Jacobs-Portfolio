@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, FC, ReactNode } from 'react';
-import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate } from 'framer-motion';
-import type { AnimationPlaybackControls, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion';
+import type { AnimationPlaybackControls, MotionValue, PanInfo } from 'framer-motion';
 import {
   Folder,
   Github,
@@ -25,12 +25,23 @@ import { thumbFor } from '../data/projects';
 import type { Project, Screenshot } from '../data/projects';
 import { cn } from '../lib/cn';
 import { themeVars } from '../theme/color';
-import { ENTER, motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
+import { ENTER, INDICATOR, motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
 import { Button, IconButton } from './md/Button';
 import { Reveal, RevealItem } from './md/Reveal';
 import { StateLayer } from './md/StateLayer';
 
 const SWIPE_DISTANCE_RATIO = 0.4;
+
+/**
+ * The lightbox arrows step aside while a swipe is in flight. Opacity is part of
+ * `md-shape-morph`'s transition, so this adds no transition of its own: a
+ * `transition-opacity` utility would replace that list and drop the press
+ * morph's animation with it.
+ */
+const ARROW_CLASS = (swiping: boolean): string =>
+  swiping
+    ? 'opacity-0 pointer-events-none'
+    : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100';
 
 /**
  * How far ahead a release is credited for the speed it still carries. A flick
@@ -87,6 +98,9 @@ interface LightboxPaneProps {
   shot: Screenshot;
   /** Position in the track: -1 previous, 0 current, 1 next. */
   slot: -1 | 0 | 1;
+  /** The track's offset and the frame's width, for the pane's depth. */
+  trackX: MotionValue<number>;
+  frameWidth: MotionValue<number>;
   ready: boolean;
   failed: boolean;
   onLoaded: (src: string) => void;
@@ -97,14 +111,28 @@ interface LightboxPaneProps {
  * One screenshot in the swipe track. The neighbours are mounted and painted
  * alongside the current one — that is what lets a drag pull the next image in
  * from the edge rather than play an animation once the finger is already gone.
+ *
+ * Each pane also reads its distance from the centre of the frame off the
+ * track, and recedes with it: a pane on its way out shrinks a little and dims,
+ * the one on its way in grows to full size. The step itself is unchanged (one
+ * frame width), so the gesture maths never sees the depth; it is the same
+ * carousel feel as MD3's, derived from the one value the finger drives.
  */
-const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoaded, onFailed }) => (
+const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, trackX, frameWidth, ready, failed, onLoaded, onFailed }) => {
+  const distance = useTransform([trackX, frameWidth], ([x, width]: number[]) =>
+    width ? Math.min(Math.abs(slot * width + x) / width, 1) : slot === 0 ? 0 : 1,
+  );
+  const scale = useTransform(distance, [0, 1], [1, 0.86]);
+  const shade = useTransform(distance, [0, 1], [0, 0.55]);
+
+  return (
   <div
     className={`absolute inset-0 ${
       slot === -1 ? '-translate-x-full' : slot === 1 ? 'translate-x-full' : ''
     }`}
     aria-hidden={slot === 0 ? undefined : 'true'}
   >
+    <motion.div style={{ scale }} className="absolute inset-0 overflow-hidden rounded-3xl bg-md-surface-dim">
     {/* The grid already fetched the thumbnail, so it paints immediately and
         holds the frame at the right size while the full-resolution PNG
         arrives — rather than an empty box with the close button floating in
@@ -143,18 +171,13 @@ const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoad
         ready ? 'opacity-100' : 'opacity-0'
       }`}
     />
-  </div>
-);
 
-/**
- * One project's case study, as its own page at `/projects/<id>`.
- *
- * This content used to live in a modal, which meant it existed only after a
- * click: it was absent from the HTML the build ships, so no crawler, unfurler
- * or LLM fetcher ever saw the substance of the work — roughly four fifths of
- * the site's writing. As a route it is prerendered like any other page, with
- * its own title, description and canonical URL.
- */
+    <motion.span aria-hidden="true" style={{ opacity: shade }} className="absolute inset-0 bg-black pointer-events-none" />
+    </motion.div>
+  </div>
+  );
+};
+
 interface SectionTitleProps {
   icon: LucideIcon;
   tone: string;
@@ -195,6 +218,15 @@ const FactList: FC<FactListProps> = ({ icon, tone, title, items, markTone }) => 
   </RevealItem>
 );
 
+/**
+ * One project's case study, as its own page at `/projects/<id>`.
+ *
+ * This content used to live in a modal, which meant it existed only after a
+ * click: it was absent from the HTML the build ships, so no crawler, unfurler
+ * or LLM fetcher ever saw the substance of the work — roughly four fifths of
+ * the site's writing. As a route it is prerendered like any other page, with
+ * its own title, description and canonical URL.
+ */
 export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   // The lightbox tracks a position in the project's screenshot list rather than
   // a single shot, so it can walk to the next or previous one.
@@ -202,6 +234,9 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   // True from the moment a swipe engages until the finger lifts, so the arrows
   // can get out of the way of the gesture.
   const [isSwiping, setIsSwiping] = useState(false);
+  // While the frame flies back to its thumbnail the page underneath is already
+  // the destination, so the overlay stops taking input.
+  const [isClosing, setIsClosing] = useState(false);
   // The frame's own width, which is both the drag limit and the distance one
   // step of the track covers. Measured rather than assumed: it changes with the
   // viewport.
@@ -214,6 +249,23 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   const [failedSrcs, setFailedSrcs] = useState<string[]>([]);
 
   const reduceMotion = useReducedMotion();
+
+  // The container transform: the frame's offset and scale relative to where it
+  // is laid out, plus the scrim and the controls, which fade on their own.
+  const frameX = useMotionValue(0);
+  const frameY = useMotionValue(0);
+  const frameScale = useMotionValue(1);
+  const frameOpacity = useMotionValue(1);
+  const scrimOpacity = useMotionValue(0);
+  const chromeOpacity = useMotionValue(0);
+  // The frame width as a motion value too, so each pane can derive its depth
+  // from the track without re-rendering on every drag frame.
+  const frameWidthValue = useMotionValue(0);
+
+  // One per thumbnail: where the frame grows from and returns to.
+  const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const filmstripRef = useRef<HTMLDivElement | null>(null);
+  const closingRef = useRef(false);
 
   // Horizontal offset of the whole three-pane track. The drag writes to it
   // directly, so the image tracks the finger one-to-one instead of animating
@@ -241,6 +293,9 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   );
   const shotCount = shots.length;
   const selectedImage = selectedIndex === null ? null : shots[selectedIndex] ?? null;
+  // Read by callbacks that must not be re-created on every step.
+  const selectedIndexRef = useRef(selectedIndex);
+  selectedIndexRef.current = selectedIndex;
   const canNavigate = shotCount > 1;
   const lightboxOpen = selectedImage !== null;
 
@@ -273,24 +328,111 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   }, []);
 
   const openImage = useCallback((index: number) => {
+    closingRef.current = false;
     setSelectedIndex(index);
   }, []);
 
+  /**
+   * The translation and scale that put the frame exactly over thumbnail
+   * `index`, or null when there is nothing on screen to aim at. Both pictures
+   * are 9:20, so one uniform scale matches them. The frame's own current
+   * transform is taken back out, so this is right even mid-animation.
+   */
+  const offsetToThumb = useCallback(
+    (index: number | null) => {
+      const frame = frameRef.current;
+      const thumb = index === null ? null : thumbRefs.current[index];
+      if (!frame || !thumb || !frame.offsetWidth) return null;
+      const t = thumb.getBoundingClientRect();
+      if (!t.width || t.bottom < 0 || t.top > window.innerHeight) return null;
+      const f = frame.getBoundingClientRect();
+      const centreX = f.left + f.width / 2 - frameX.get();
+      const centreY = f.top + f.height / 2 - frameY.get();
+      return {
+        x: t.left + t.width / 2 - centreX,
+        y: t.top + t.height / 2 - centreY,
+        scale: t.width / frame.offsetWidth,
+      };
+    },
+    [frameX, frameY],
+  );
+
+  // Open: start over the thumbnail, then grow into place on the slow spatial
+  // spring while the scrim fades up and the controls follow a beat later.
+  // A layout effect, so the first painted frame is already the small one.
+  useIsomorphicLayoutEffect(() => {
+    if (!lightboxOpen) return;
+    const from = reduceMotion ? null : offsetToThumb(selectedIndexRef.current);
+    const fade = motionScheme.standard.effects.default;
+
+    frameOpacity.jump(from ? 1 : 0);
+    frameX.jump(from?.x ?? 0);
+    frameY.jump(from?.y ?? 0);
+    frameScale.jump(from?.scale ?? (reduceMotion ? 1 : 0.94));
+    scrimOpacity.jump(0);
+    chromeOpacity.jump(0);
+
+    const grow = motionScheme.standard.spatial.slow;
+    const runs = [
+      animate(frameX, 0, grow),
+      animate(frameY, 0, grow),
+      animate(frameScale, 1, grow),
+      animate(frameOpacity, 1, fade),
+      animate(scrimOpacity, 1, fade),
+      animate(chromeOpacity, 1, { ...fade, delay: reduceMotion ? 0 : 0.12 }),
+    ];
+    return () => runs.forEach((run) => run.stop());
+  }, [lightboxOpen]);
+
+  // Close: the reverse, onto the thumbnail of the screenshot now showing, then
+  // unmount and hand focus back to that thumbnail. If it is scrolled out of
+  // view there is nothing to land on, so the frame settles back and fades.
   const closeLightbox = useCallback(() => {
-    setSelectedIndex(null);
-  }, []);
+    const index = selectedIndexRef.current;
+    if (index === null || closingRef.current) return;
+    closingRef.current = true;
+
+    const to = reduceMotion ? null : offsetToThumb(index);
+    const fade = motionScheme.standard.effects.fast;
+    const land = motionScheme.standard.spatial.default;
+    const runs = [animate(scrimOpacity, 0, fade), animate(chromeOpacity, 0, fade)];
+    if (to) {
+      runs.push(animate(frameX, to.x, land), animate(frameY, to.y, land), animate(frameScale, to.scale, land));
+    } else {
+      runs.push(animate(frameOpacity, 0, fade), animate(frameScale, reduceMotion ? 1 : 0.94, land));
+    }
+
+    setIsClosing(true);
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      setSelectedIndex(null);
+      setIsClosing(false);
+      closingRef.current = false;
+      thumbRefs.current[index]?.focus({ preventScroll: true });
+    };
+    Promise.all(runs).then(finish);
+    // Animations stall in a background tab; the overlay must not outlive them
+    // and sit invisibly over the page, swallowing every click.
+    window.setTimeout(finish, 900);
+  }, [chromeOpacity, frameOpacity, frameScale, frameX, frameY, offsetToThumb, reduceMotion, scrimOpacity]);
 
   // One step of the track is exactly one frame width, so the width has to be
   // known before any of the gesture maths means anything.
   useIsomorphicLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    const measure = () => setFrameWidth(frame.offsetWidth);
+    const measure = () => {
+      setFrameWidth(frame.offsetWidth);
+      frameWidthValue.set(frame.offsetWidth);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(frame);
     return () => observer.disconnect();
-  }, [lightboxOpen]);
+  }, [lightboxOpen, frameWidthValue]);
 
   const animateTrackTo = useCallback(
     (target: number) => {
@@ -325,6 +467,35 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
     },
     [shotCount, trackX],
   );
+
+  /** Jumps to any screenshot, sliding in from the side it lies on. */
+  const goToIndex = useCallback(
+    (target: number) => {
+      const current = selectedIndexRef.current;
+      if (current === null || target === current || shotCount < 2) return;
+      const step = target > current ? 1 : -1;
+      const width = frameRef.current?.offsetWidth ?? 0;
+      pendingTrackXRef.current = width ? trackX.get() + step * width : 0;
+      pendingVelocityRef.current = 0;
+      setSelectedIndex(target);
+    },
+    [shotCount, trackX],
+  );
+
+  // Keep the active frame of the filmstrip centred as the index moves. The
+  // strip is scrolled directly rather than with `scrollIntoView`, which also
+  // scrolls every scrollable ancestor — including the scroll-locked page,
+  // which then visibly slides sideways behind the lightbox.
+  useEffect(() => {
+    const strip = filmstripRef.current;
+    if (selectedIndex === null || !strip) return;
+    const thumb = strip.children[selectedIndex] as HTMLElement | undefined;
+    if (!thumb) return;
+    strip.scrollTo({
+      left: thumb.offsetLeft - (strip.clientWidth - thumb.offsetWidth) / 2,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [selectedIndex, reduceMotion]);
 
   // Re-pin and release the track. Runs before paint, so the swap above is never
   // visible as a jump.
@@ -426,11 +597,17 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         goToImage(-1);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        goToIndex(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        goToIndex(shotCount - 1);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedImage, canNavigate, closeLightbox, goToImage]);
+  }, [selectedImage, canNavigate, closeLightbox, goToImage, goToIndex, shotCount]);
 
   const Icon = project.icon;
 
@@ -561,6 +738,9 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                   {shots.map((shot, index) => (
                     <motion.figure key={shot.src} variants={revealItem} className="m-0">
                       <button
+                        ref={(node) => {
+                          thumbRefs.current[index] = node;
+                        }}
                         type="button"
                         onClick={() => openImage(index)}
                         aria-label={`Zoom: ${shot.caption}`}
@@ -654,139 +834,190 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
         </div>
       </motion.div>
 
-      {/* Lightbox / Zoom Overlay */}
-      <AnimatePresence>
-        {selectedImage && (
+      {/* Lightbox. It opens as an MD3 container transform: the frame starts
+          exactly over the thumbnail that was pressed and grows into place, and
+          closing carries it back onto the thumbnail of whichever screenshot
+          is showing by then. The scrim and the controls fade separately, so
+          the picture is never hidden behind its own chrome while it moves. */}
+      {selectedImage && selectedIndex !== null && (
+        <div
+          className={cn('fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6', isClosing && 'pointer-events-none')}
+          /* Every press starts out as a plain click; only a drag that actually
+             engages flips the flag, and the next press clears it again, so a
+             stale flag can never swallow a real dismissal. */
+          onPointerDownCapture={() => {
+            swipedRef.current = false;
+          }}
+          onClick={dismissLightbox}
+        >
+          <motion.div aria-hidden="true" style={{ opacity: scrimOpacity }} className="absolute inset-0 bg-black/85" />
+
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/85"
-            /* Every press starts out as a plain click; only a drag that actually
-               engages flips the flag, and the next press clears it again, so a
-               stale flag can never swallow a real dismissal. */
-            onPointerDownCapture={() => {
-              swipedRef.current = false;
-            }}
-            onClick={dismissLightbox}
+            role="dialog"
+            aria-modal="true"
+            aria-label={selectedImage.caption}
+            className="relative max-w-5xl max-h-[94vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-label={selectedImage.caption}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={spatialWithEffects(motionScheme.standard.spatial.default, motionScheme.standard.effects.fast)}
-              className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <motion.div style={{ opacity: chromeOpacity }} className="absolute -top-14 right-0">
               <IconButton
                 icon={X}
                 variant="tonal"
                 onClick={closeLightbox}
                 autoFocus
-                className="absolute -top-14 right-0"
                 aria-label="Close image preview"
               />
+            </motion.div>
 
-              {/* Arrows flank the image rather than sitting on top of it, so
-                  nothing covers the screenshot. They are laid out first, which
-                  is why the frame gives up the width they need: its height is
-                  capped by what is left over once both buttons, the gaps and
-                  the overlay's own padding are taken out of the viewport. */}
-              <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
-                {canNavigate && (
+            {/* Arrows flank the image rather than sitting on top of it, so
+                nothing covers the screenshot. They are laid out first, which
+                is why the frame gives up the width they need: its height is
+                capped by what is left over once both buttons, the gaps and
+                the overlay's own padding are taken out of the viewport. */}
+            <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
+              {canNavigate && (
+                <motion.div style={{ opacity: chromeOpacity }}>
                   <IconButton
                     icon={ChevronLeft}
                     variant="tonal"
                     onClick={() => goToImage(-1)}
                     aria-label="Previous screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={cn(
-                      'transition-opacity duration-effects ease-effects',
-                      isSwiping
-                        ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100',
-                    )}
+                    className={ARROW_CLASS(isSwiping)}
                   />
+                </motion.div>
+              )}
+
+              <motion.div
+                ref={frameRef}
+                style={{ x: frameX, y: frameY, scale: frameScale, opacity: frameOpacity }}
+                className={cn(
+                  'relative aspect-[9/20] h-[68vh] overflow-hidden rounded-3xl shadow-md-3 bg-md-surface-dim',
+                  canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full',
                 )}
-
-                <div
-                  ref={frameRef}
-                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-3xl border border-md-outline-variant/60 shadow-md-3 bg-md-surface-dim ${
-                    canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full'
-                  }`}
+              >
+                {/* The track carries all three panes at once. Dragging moves
+                    the track itself, so the neighbour really does come in
+                    from the edge under the finger; releasing hands the same
+                    offset to the settle animation. */}
+                <motion.div
+                  className={`absolute inset-0 ${canNavigate ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  style={{ x: trackX }}
+                  drag={canNavigate ? 'x' : false}
+                  dragDirectionLock
+                  dragConstraints={{ left: -frameWidth, right: frameWidth }}
+                  dragElastic={0.12}
+                  dragMomentum={false}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 >
-                  {/* The track carries all three panes at once. Dragging moves
-                      the track itself, so the neighbour really does come in
-                      from the edge under the finger; releasing hands the same
-                      offset to the settle animation. */}
-                  <motion.div
-                    className={`absolute inset-0 ${
-                      canNavigate ? 'cursor-grab active:cursor-grabbing' : ''
-                    }`}
-                    style={{ x: trackX }}
-                    drag={canNavigate ? 'x' : false}
-                    dragDirectionLock
-                    dragConstraints={{ left: -frameWidth, right: frameWidth }}
-                    dragElastic={0.12}
-                    dragMomentum={false}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  >
-                    {trackPanes.map(({ shot, slot }) => (
-                      <LightboxPane
-                        key={slot}
-                        shot={shot}
-                        slot={slot}
-                        ready={loadedSrcs.includes(shot.src)}
-                        // A full-resolution PNG that will not load leaves the
-                        // thumbnail standing in for it — sharp rather than
-                        // blurred, so it reads as the picture instead of a
-                        // stalled preview.
-                        failed={!loadedSrcs.includes(shot.src) && failedSrcs.includes(shot.src)}
-                        onLoaded={markLoaded}
-                        onFailed={markFailed}
-                      />
-                    ))}
-                  </motion.div>
-                </div>
+                  {trackPanes.map(({ shot, slot }) => (
+                    <LightboxPane
+                      key={slot}
+                      shot={shot}
+                      slot={slot}
+                      trackX={trackX}
+                      frameWidth={frameWidthValue}
+                      ready={loadedSrcs.includes(shot.src)}
+                      // A full-resolution PNG that will not load leaves the
+                      // thumbnail standing in for it — sharp rather than
+                      // blurred, so it reads as the picture instead of a
+                      // stalled preview.
+                      failed={!loadedSrcs.includes(shot.src) && failedSrcs.includes(shot.src)}
+                      onLoaded={markLoaded}
+                      onFailed={markFailed}
+                    />
+                  ))}
+                </motion.div>
+              </motion.div>
 
-                {canNavigate && (
+              {canNavigate && (
+                <motion.div style={{ opacity: chromeOpacity }}>
                   <IconButton
                     icon={ChevronRight}
                     variant="tonal"
                     onClick={() => goToImage(1)}
                     aria-label="Next screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={cn(
-                      'transition-opacity duration-effects ease-effects',
-                      isSwiping
-                        ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100',
-                    )}
+                    className={ARROW_CLASS(isSwiping)}
                   />
-                )}
+                </motion.div>
+              )}
+            </div>
+
+            <motion.div style={{ opacity: chromeOpacity }} className="mt-3 flex flex-col items-center gap-2.5 w-full min-w-0">
+              {/* The caption changes with the picture: the old one lifts away
+                  as the new one rises in, on the fast effects spring. */}
+              <div className="relative h-6 w-full overflow-hidden text-center" aria-live="polite">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.p
+                    key={selectedIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={spatialWithEffects(motionScheme.standard.spatial.fast, motionScheme.standard.effects.fast)}
+                    className="absolute inset-x-0 text-label-lg text-md-on-surface truncate px-2"
+                  >
+                    {selectedImage.caption}
+                    {canNavigate && (
+                      <span className="ml-2 font-normal text-md-on-surface-variant tabular-nums">
+                        {selectedIndex + 1} / {shotCount}
+                      </span>
+                    )}
+                  </motion.p>
+                </AnimatePresence>
               </div>
 
-              <p
-                className="mt-3 text-label-lg text-md-on-surface text-center px-2"
-                aria-live="polite"
-              >
-                {selectedImage.caption}
-              </p>
-
-              {canNavigate && selectedIndex !== null && (
-                <p className="mt-1 text-label-sm font-normal text-md-on-surface-variant tabular-nums">
-                  {selectedIndex + 1} / {shotCount}
-                  <span className="sr-only">
-                    {' '}
-                    — swipe or use the arrow keys to move between screenshots
-                  </span>
-                </p>
+              {/* Filmstrip: every screenshot at a glance, and a direct way to
+                  any of them. The active marker travels between frames on the
+                  expressive spring, like the navigation indicator. */}
+              {canNavigate && (
+                <div
+                  ref={filmstripRef}
+                  role="group"
+                  aria-label="All screenshots"
+                  className="relative flex items-center gap-2 max-w-full overflow-x-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {shots.map((shot, index) => {
+                    const active = index === selectedIndex;
+                    return (
+                      <button
+                        key={shot.src}
+                        type="button"
+                        onClick={() => goToIndex(index)}
+                        aria-label={`Screenshot ${index + 1}: ${shot.caption}`}
+                        aria-current={active ? 'true' : undefined}
+                        className={cn(
+                          'md-interactive shrink-0 w-6 sm:w-7 aspect-[9/20] rounded-md transition-opacity duration-effects ease-effects',
+                          active ? 'opacity-100' : 'opacity-45 hover:opacity-90 focus-visible:opacity-100',
+                        )}
+                      >
+                        <img
+                          src={thumbFor(shot.src)}
+                          alt=""
+                          draggable={false}
+                          loading="lazy"
+                          className="w-full h-full object-cover rounded-md select-none"
+                        />
+                        {active && (
+                          <motion.span
+                            layoutId="lightbox-filmstrip-active"
+                            transition={INDICATOR}
+                            className="absolute -inset-[3px] rounded-[9px] border-2 border-md-primary pointer-events-none"
+                          />
+                        )}
+                        <StateLayer shape="small" />
+                      </button>
+                    );
+                  })}
+                </div>
               )}
+
+              <span className="sr-only">Swipe, use the arrow keys, or pick a screenshot below to move between them.</span>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </article>
   );
 };
