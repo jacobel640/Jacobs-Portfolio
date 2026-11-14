@@ -130,6 +130,14 @@ export const ENTER = spatialWithEffects(standard.spatial.slow, standard.effects.
 /** The navigation indicator and selection marks. */
 export const INDICATOR = expressive.spatial.default;
 
+/**
+ * The hover lift every raised card shares: a few pixels on the fast spatial
+ * spring. Framer drives it rather than CSS because the reveal animation leaves
+ * an inline transform on the same element, which a CSS `translate` would lose to.
+ */
+export const HOVER_LIFT = { y: -4 } as const;
+export const HOVER_LIFT_TRANSITION: Transition = { y: standard.spatial.fast };
+
 /** Grid reflow when filtering. */
 export const REFLOW = standard.spatial.default;
 

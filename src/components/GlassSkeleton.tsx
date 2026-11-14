@@ -5,7 +5,7 @@ export const SkillsSkeleton: FC = () => {
     <section id="skills" aria-busy="true" aria-label="Loading skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
       {/* Header Skeleton */}
       <div className="text-center space-y-4 mb-16 flex flex-col items-center">
-        <div className="w-36 h-7 rounded-full bg-md-surface-container-high border border-md-outline-variant" />
+        <div className="w-36 h-7 rounded-full bg-md-surface-container-high border border-md-outline-variant/60" />
         <div className="w-64 sm:w-96 h-10 rounded-2xl bg-md-surface-container-high" />
         <div className="w-80 sm:w-2/3 max-w-xl h-5 rounded-xl bg-md-surface-container-high" />
       </div>
@@ -15,7 +15,7 @@ export const SkillsSkeleton: FC = () => {
         {[1, 2, 3].map((key) => (
           <div
             key={key}
-            className="flex flex-col justify-between rounded-3xl border border-md-outline-variant bg-md-surface-container-low p-7 sm:p-8 min-h-[380px]"
+            className="flex flex-col justify-between rounded-3xl border border-md-outline-variant/60 bg-md-surface-container-low p-7 sm:p-8 min-h-[380px]"
           >
             <div>
               <div className="flex items-center gap-4 mb-6">
@@ -32,7 +32,7 @@ export const SkillsSkeleton: FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-md-outline-variant space-y-3">
+            <div className="pt-4 border-t border-md-outline-variant/60 space-y-3">
               <div className="w-28 h-3 rounded bg-md-surface-container-highest" />
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5, 6].map((pill) => (
@@ -52,7 +52,7 @@ export const ProjectsSkeleton: FC = () => {
     <section id="projects" aria-busy="true" aria-label="Loading projects" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden animate-pulse">
       {/* Header Skeleton */}
       <div className="text-center space-y-4 mb-16 flex flex-col items-center">
-        <div className="w-36 h-7 rounded-full bg-md-surface-container-high border border-md-outline-variant" />
+        <div className="w-36 h-7 rounded-full bg-md-surface-container-high border border-md-outline-variant/60" />
         <div className="w-64 sm:w-96 h-10 rounded-2xl bg-md-surface-container-high" />
         <div className="w-80 sm:w-2/3 max-w-xl h-5 rounded-xl bg-md-surface-container-high" />
         
@@ -69,7 +69,7 @@ export const ProjectsSkeleton: FC = () => {
         {[1, 2].map((key) => (
           <div
             key={key}
-            className="flex flex-col justify-between rounded-3xl border border-md-outline-variant bg-md-surface-container-low p-7 sm:p-8 min-h-[460px]"
+            className="flex flex-col justify-between rounded-3xl border border-md-outline-variant/60 bg-md-surface-container-low p-7 sm:p-8 min-h-[460px]"
           >
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -83,10 +83,10 @@ export const ProjectsSkeleton: FC = () => {
                 <div className="w-3/4 h-3.5 rounded bg-md-surface-container-high" />
               </div>
               {/* Image Preview Box Skeleton */}
-              <div className="w-full h-44 rounded-2xl bg-md-surface-container-high mb-6 border border-md-outline-variant" />
+              <div className="w-full h-44 rounded-2xl bg-md-surface-container-high mb-6 border border-md-outline-variant/60" />
             </div>
 
-            <div className="pt-4 border-t border-md-outline-variant flex items-center justify-between">
+            <div className="pt-4 border-t border-md-outline-variant/60 flex items-center justify-between">
               <div className="flex gap-2">
                 {[1, 2, 3].map((tag) => (
                   <div key={tag} className="w-16 h-7 rounded-lg bg-md-surface-container-high" />
@@ -114,7 +114,7 @@ export const ContactSkeleton: FC = () => {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="p-5 rounded-3xl bg-md-surface-container-low border border-md-outline-variant h-32 flex flex-col justify-between"
+              className="p-5 rounded-3xl bg-md-surface-container-low border border-md-outline-variant/60 h-32 flex flex-col justify-between"
             >
               <div className="flex justify-between items-center">
                 <div className="w-10 h-10 rounded-2xl bg-md-surface-container-highest" />

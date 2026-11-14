@@ -121,7 +121,59 @@
       border-radius theme('transitionDuration.spatial-fast') theme('transitionTimingFunction.spatial-fast'),
       box-shadow theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
       background-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      border-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
       color theme('transitionDuration.effects') theme('transitionTimingFunction.effects');
+  }
+
+  /*
+   * Tonal surfaces: a surface container washed with one accent role.
+   *
+   * `--md-tone` names the role (set it with a `tone-*` utility, or leave it to
+   * inherit from an ancestor, so chips inside a card take the card's tone).
+   * `--md-tone-rest` and `--md-tone-hover` say how much of it shows; hover
+   * and keyboard focus deepen the wash and draw the outline toward the tone.
+   * Everything resolves through the scheme variables, so a project's own
+   * scheme re-tints these with no extra classes.
+   */
+  .md-tonal {
+    --md-tonal-tone: var(--md-tone, var(--md-sys-color-primary));
+    --md-tonal-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 60%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-rest, 0%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) var(--md-tone-rest-border, 0%), var(--md-tonal-border));
+  }
+
+  .md-tonal:focus-within {
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-hover, 10%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) 40%, var(--md-tonal-border));
+  }
+
+  /* Only where hover is real: on a touch screen `:hover` sticks to whatever
+     was tapped last, which would leave a card tinted after scrolling past it. */
+  @media (hover: hover) {
+    .md-tonal:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--md-tonal-tone) var(--md-tone-hover, 10%),
+        var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+      );
+      border-color: color-mix(in srgb, var(--md-tonal-tone) 40%, var(--md-tonal-border));
+    }
+  }
+
+  /* On a tonal surface the wash is the hover state, so the ripple keeps only
+     its press, in the surface's tone. Direct children only: a chip or button
+     nested inside the surface keeps its own full state layer. */
+  .md-tonal > md-ripple {
+    --md-ripple-hover-opacity: 0;
+    --md-ripple-pressed-color: var(--md-tonal-tone);
   }
 
   /* Scrollbar for surfaces that sit above the page, such as the project modal.
@@ -151,5 +203,25 @@
   .modal-scroll {
     scrollbar-width: thin;
     scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  }
+}
+
+@layer utilities {
+  /* Which accent role a tonal surface (and its icon) takes. */
+  .tone-primary {
+    --md-tone: var(--md-sys-color-primary);
+  }
+
+  .tone-secondary {
+    --md-tone: var(--md-sys-color-secondary);
+  }
+
+  .tone-tertiary {
+    --md-tone: var(--md-sys-color-tertiary);
+  }
+
+  /* The role itself, for an icon that should match its surface. */
+  .text-tone {
+    color: var(--md-tone, var(--md-sys-color-primary));
   }
 }

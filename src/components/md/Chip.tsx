@@ -4,6 +4,8 @@ import { Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { INDICATOR, motionScheme } from '../../theme/motion';
+import { TONE_CLASS } from '../../theme/tone';
+import type { Tone } from '../../theme/tone';
 import { StateLayer } from './StateLayer';
 
 interface FilterChipProps {
@@ -54,22 +56,28 @@ export const FilterChip: FC<FilterChipProps> = ({ selected, onSelect, children }
 
 interface AssistChipProps {
   icon?: LucideIcon;
-  /** Tailwind text colour for the icon. */
-  iconClassName?: string;
+  /** The accent role the chip is washed with; its icon takes the same role. */
+  tone?: Tone;
   className?: string;
   children: ReactNode;
 }
 
-/** A static MD3 assist-chip lookalike, for labels that are not actions. */
-export const AssistChip: FC<AssistChipProps> = ({ icon: Icon, iconClassName = 'text-md-primary', className, children }) => (
+/**
+ * A static MD3 assist-chip lookalike, for labels that are not actions. It is a
+ * tonal surface: a light wash of its role at rest, deeper on hover, with the
+ * icon in the role itself, so the colour reads as one unit rather than a
+ * coloured glyph on a grey pill.
+ */
+export const AssistChip: FC<AssistChipProps> = ({ icon: Icon, tone = 'primary', className, children }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-2 h-8 px-4 rounded-lg text-label-lg',
-      'bg-md-surface-container-low text-md-on-surface border border-md-outline-variant',
+      'md-tonal md-shape-morph inline-flex items-center gap-2 h-8 px-4 rounded-lg text-label-lg text-md-on-surface border cursor-default',
+      '[--md-tone-rest:8%] [--md-tone-rest-border:30%] [--md-tone-hover:16%]',
+      TONE_CLASS[tone],
       className,
     )}
   >
-    {Icon && <Icon className={cn('w-[18px] h-[18px] shrink-0', iconClassName)} aria-hidden="true" />}
+    {Icon && <Icon className="w-[18px] h-[18px] shrink-0 text-tone" aria-hidden="true" />}
     <span>{children}</span>
   </span>
 );

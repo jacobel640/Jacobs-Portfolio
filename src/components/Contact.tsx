@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, FC, MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Linkedin, Github, Mail, ArrowUpRight, Heart, Copy, Check, ArrowUp } from 'lucide-react';
 import { cn } from '../lib/cn';
-import { motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
+import { HOVER_LIFT, HOVER_LIFT_TRANSITION, motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
+import { TONE_CLASS } from '../theme/tone';
 import { Button } from './md/Button';
 import { ExpressiveShape } from './md/ExpressiveShape';
 import { Reveal, RevealItem } from './md/Reveal';
@@ -10,6 +11,9 @@ import { StateLayer } from './md/StateLayer';
 
 const EMAIL = 'Jacobel640@gmail.com';
 const GITHUB_USER = 'jacobel640';
+
+const ARROW =
+  'w-4 h-4 shrink-0 text-md-on-surface-variant transition-transform duration-spatial ease-spatial group-hover:translate-x-0.5 group-hover:-translate-y-0.5';
 
 const COPY_STATES = {
   idle: { icon: Copy, text: 'Copy' },
@@ -67,6 +71,7 @@ export const Contact: FC = () => {
       icon: Linkedin,
       label: 'in/jacob-elcharar',
       actionText: 'Connect',
+      tone: 'primary' as const,
       iconTone: 'bg-md-primary-container text-md-on-primary-container',
     },
     {
@@ -75,6 +80,7 @@ export const Contact: FC = () => {
       icon: Github,
       label: `github.com/${GITHUB_USER}`,
       actionText: 'Follow',
+      tone: 'tertiary' as const,
       iconTone: 'bg-md-tertiary-container text-md-on-tertiary-container',
     },
     {
@@ -83,6 +89,7 @@ export const Contact: FC = () => {
       icon: Mail,
       label: EMAIL,
       actionText: 'Send Email',
+      tone: 'secondary' as const,
       iconTone: 'bg-md-secondary-container text-md-on-secondary-container',
     },
   ];
@@ -123,28 +130,31 @@ export const Contact: FC = () => {
                 const Icon = item.icon;
                 const external = item.url.startsWith('http');
                 return (
-                  <motion.li key={item.name} variants={revealItem} whileHover={{ y: -3 }} transition={{ y: motionScheme.standard.spatial.fast }}>
+                  <motion.li key={item.name} variants={revealItem} whileHover={HOVER_LIFT} transition={HOVER_LIFT_TRANSITION}>
                     <a
                       href={item.url}
                       target={external ? '_blank' : undefined}
                       rel={external ? 'noopener noreferrer' : undefined}
-                      className="md-interactive md-shape-morph group flex h-full flex-col justify-between p-5 rounded-3xl bg-md-surface-container-low border border-md-outline-variant/60 text-md-on-surface hover:shadow-md-2"
+                      className={cn(
+                        // A list row on phones (icon, label, arrow), a tile from `sm` up.
+                        'md-interactive md-tonal md-shape-morph group flex h-full items-center gap-4 p-4 rounded-3xl border text-md-on-surface hover:shadow-md-2',
+                        'sm:flex-col sm:items-stretch sm:justify-between sm:gap-0 sm:p-5',
+                        TONE_CLASS[item.tone],
+                      )}
                     >
                       <StateLayer shape="card" />
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between sm:mb-4">
                         <div className={`md-shape-morph p-2.5 rounded-2xl group-hover:rounded-[22px] ${item.iconTone}`}>
                           <Icon className="w-5 h-5" aria-hidden="true" />
                         </div>
-                        <ArrowUpRight
-                          className="w-4 h-4 text-md-on-surface-variant transition-transform duration-spatial ease-spatial group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                          aria-hidden="true"
-                        />
+                        <ArrowUpRight className={cn(ARROW, 'hidden sm:block')} aria-hidden="true" />
                       </div>
 
-                      <div className="text-left">
+                      <div className="flex-1 min-w-0 text-left">
                         <div className="text-title-sm text-md-on-surface mb-0.5">{item.name}</div>
                         <div className="text-body-sm text-md-on-surface-variant truncate">{item.label}</div>
                       </div>
+                      <ArrowUpRight className={cn(ARROW, 'sm:hidden')} aria-hidden="true" />
                     </a>
                   </motion.li>
                 );
@@ -197,10 +207,12 @@ export const Contact: FC = () => {
         <div className="pt-8 mt-12 border-t border-md-outline-variant/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-body-sm text-md-on-surface-variant">
           <p>© {currentYear} Jacob Elcharar. All rights reserved.</p>
 
-          <p className="flex items-center gap-1.5">
-            <span>Crafted with</span>
-            <Heart className="w-3.5 h-3.5 text-md-error fill-md-error inline" aria-label="love" />
-            <span>using React, Tailwind CSS, Material Web &amp; Framer Motion</span>
+          {/* One run of text with the heart inline, so a narrow screen wraps
+              it like a sentence instead of stacking flex items. */}
+          <p className="text-center text-balance">
+            Crafted with{' '}
+            <Heart className="inline w-3.5 h-3.5 -mt-0.5 align-middle text-md-error fill-md-error" aria-label="love" />{' '}
+            using React, Tailwind CSS, Material Web &amp; Framer Motion
           </p>
 
           <Button variant="text" onClick={scrollToTop} icon={ArrowUp}>

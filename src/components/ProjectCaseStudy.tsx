@@ -551,7 +551,8 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                   Screenshots &amp; Visual Artifacts
                 </SectionTitle>
                 {shots.length > 0 && (
-                  <span className="text-body-sm text-md-on-surface-variant">Click any image to zoom</span>
+                  // A pointer hint; on a phone the thumbnails explain themselves.
+                  <span className="hidden sm:inline text-body-sm text-md-on-surface-variant shrink-0">Click any image to zoom</span>
                 )}
               </RevealItem>
 

@@ -37,9 +37,9 @@ const RevealWords: FC<{ text: string; className?: string }> = ({ text, className
 );
 
 const DOMAINS = [
-  { icon: Smartphone, label: 'Native Android (Kotlin & Compose)', tone: 'text-md-primary' },
-  { icon: Server, label: 'Spring Boot & Cloud Microservices', tone: 'text-md-secondary' },
-  { icon: Cpu, label: 'AI Agents & Modern Tooling', tone: 'text-md-tertiary' },
+  { icon: Smartphone, label: 'Native Android (Kotlin & Compose)', tone: 'primary' },
+  { icon: Server, label: 'Spring Boot & Cloud Microservices', tone: 'secondary' },
+  { icon: Cpu, label: 'AI Agents & Modern Tooling', tone: 'tertiary' },
 ] as const;
 
 export const Hero: FC = () => {
@@ -89,7 +89,11 @@ export const Hero: FC = () => {
           variants={revealContainer(0.07)}
           className="text-display-sm sm:text-display-md lg:text-display-lg text-md-on-surface mb-6 text-balance"
         >
-          <RevealWords text="Hi, I'm" /> <RevealWords text="Jacob Elcharar" className="text-md-primary" />
+          <RevealWords text="Hi, I'm" />{' '}
+          {/* The name never splits across lines; the greeting wraps instead. */}
+          <span className="whitespace-nowrap">
+            <RevealWords text="Jacob Elcharar" className="text-md-primary" />
+          </span>
         </motion.h1>
 
         {/* Roles */}
@@ -120,7 +124,7 @@ export const Hero: FC = () => {
         >
           {DOMAINS.map(({ icon, label, tone }) => (
             <motion.li key={label} variants={revealItem}>
-              <AssistChip icon={icon} iconClassName={tone} className="h-10">
+              <AssistChip icon={icon} tone={tone} className="h-10">
                 {label}
               </AssistChip>
             </motion.li>

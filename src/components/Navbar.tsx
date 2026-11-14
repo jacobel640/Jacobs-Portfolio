@@ -268,7 +268,7 @@ export const Navbar: FC = () => {
                   </RevealItem>
                 );
               })}
-              <RevealItem className="pt-3 mt-2 border-t border-md-outline-variant grid grid-cols-2 gap-3">
+              <RevealItem className="pt-3 mt-2 border-t border-md-outline-variant/60 grid grid-cols-2 gap-3">
                 <Button variant="outlined" icon={Github} href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
                   GitHub
                 </Button>

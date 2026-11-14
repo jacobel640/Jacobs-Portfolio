@@ -1,7 +1,10 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Server, Check, Sparkles, Layers, Cpu } from 'lucide-react';
-import { revealContainer, revealItem } from '../theme/motion';
+import { cn } from '../lib/cn';
+import { HOVER_LIFT, HOVER_LIFT_TRANSITION, revealContainer, revealItem } from '../theme/motion';
+import { TONE_CLASS } from '../theme/tone';
+import type { Tone } from '../theme/tone';
 import { Reveal, RevealItem } from './md/Reveal';
 import { SectionHeader } from './md/SectionHeader';
 
@@ -9,6 +12,8 @@ interface SkillCategory {
   title: string;
   subtitle: string;
   icon: typeof Smartphone;
+  /** The accent role the card is washed with on hover, and its marks take. */
+  tone: Tone;
   /** Tonal container + on-colour pair for the icon tile. */
   iconTone: string;
   /** Colour of the bullet in the impact list. */
@@ -23,6 +28,7 @@ const skillCategories: SkillCategory[] = [
     title: 'Android Development',
     subtitle: 'Native Mobile Engineering',
     icon: Smartphone,
+    tone: 'primary',
     iconTone: 'bg-md-primary-container text-md-on-primary-container',
     dotTone: 'bg-md-primary',
     skills: [
@@ -43,6 +49,7 @@ const skillCategories: SkillCategory[] = [
     title: 'Backend & Cloud Systems',
     subtitle: 'Scalable Services & Microservices',
     icon: Server,
+    tone: 'secondary',
     iconTone: 'bg-md-secondary-container text-md-on-secondary-container',
     dotTone: 'bg-md-secondary',
     skills: [
@@ -63,6 +70,7 @@ const skillCategories: SkillCategory[] = [
     title: 'AI Workflows & Dev Tools',
     subtitle: 'Next-Gen Engineering',
     icon: Cpu,
+    tone: 'tertiary',
     iconTone: 'bg-md-tertiary-container text-md-on-tertiary-container',
     dotTone: 'bg-md-tertiary',
     skills: [
@@ -103,7 +111,13 @@ export const Skills: FC = () => {
           return (
             <RevealItem
               key={category.title}
-              className="group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl bg-md-surface-container-low hover:bg-md-surface-container p-6 sm:p-7 border border-md-outline-variant/60 md-shape-morph"
+              whileHover={HOVER_LIFT}
+              transition={HOVER_LIFT_TRANSITION}
+              className={cn(
+                'md-tonal md-shape-morph group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl p-6 sm:p-7 border',
+                'hover:shadow-md-2 [--md-tone-hover:7%]',
+                TONE_CLASS[category.tone],
+              )}
             >
               {/* Band 1 — identity. The icon tile morphs toward a circle while
                   the card is hovered. */}
@@ -124,7 +138,7 @@ export const Skills: FC = () => {
                 <p className="text-body-md text-md-on-surface-variant mb-5">{category.description}</p>
 
                 <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
-                  <Sparkles className="w-3.5 h-3.5 text-md-primary" aria-hidden="true" />
+                  <Sparkles className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                   <span>Selected Impact</span>
                 </div>
                 <ul className="space-y-2">
@@ -141,7 +155,7 @@ export const Skills: FC = () => {
                   itself has landed. */}
               <div className="pt-4 border-t border-md-outline-variant/60">
                 <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
-                  <Layers className="w-3.5 h-3.5 text-md-primary" aria-hidden="true" />
+                  <Layers className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                   <span>Key Technologies</span>
                 </div>
                 <motion.ul variants={revealContainer(0.03, 0.15)} className="flex flex-wrap gap-2">
@@ -149,9 +163,10 @@ export const Skills: FC = () => {
                     <motion.li
                       key={skill}
                       variants={revealItem}
-                      className="md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md bg-md-surface-container-high text-md-on-surface-variant hover:bg-md-secondary-container hover:text-md-on-secondary-container"
+                      // Inherits the card's tone: a chip deepens toward it on hover.
+                      className="md-tonal md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md text-md-on-surface-variant hover:text-md-on-surface border border-transparent [--md-tonal-base:var(--md-sys-color-surface-container-high)] [--md-tone-hover:20%] cursor-default"
                     >
-                      <Check className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
+                      <Check className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                       {skill}
                     </motion.li>
                   ))}

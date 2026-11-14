@@ -7,7 +7,7 @@ import type { FilterType, Project } from '../data/projects';
 import { Link } from '../router';
 import { projectPath } from '../routes';
 import { themeVars } from '../theme/color';
-import { REFLOW, motionScheme, spatialWithEffects } from '../theme/motion';
+import { HOVER_LIFT, HOVER_LIFT_TRANSITION, REFLOW, motionScheme, spatialWithEffects } from '../theme/motion';
 import { FilterChip } from './md/Chip';
 import { Reveal, RevealItem } from './md/Reveal';
 import { SectionHeader } from './md/SectionHeader';
@@ -195,10 +195,12 @@ const ProjectCard = forwardRef<HTMLLIElement, { project: Project; index: number 
       // not, so the delay lives on this transition only.
       animate={{ opacity: 1, scale: 1, transition: { ...ARRIVE, delay: index * 0.04 } }}
       exit={{ opacity: 0, scale: 0.94, transition: ARRIVE }}
-      whileHover={{ y: -4 }}
-      transition={{ layout: REFLOW, y: motionScheme.standard.spatial.fast }}
+      whileHover={HOVER_LIFT}
+      transition={{ layout: REFLOW, ...HOVER_LIFT_TRANSITION }}
       style={themeVars(project.seed, { scope: 'accent' })}
-      className="md-interactive group flex flex-col justify-between rounded-3xl bg-md-surface-container border border-md-outline-variant/60 shadow-md-1 hover:shadow-md-3 p-6 sm:p-7 md-shape-morph"
+      // A tonal surface in the project's own primary: on hover the card washes
+      // toward the colour its icon and label already carry.
+      className="md-interactive md-tonal md-shape-morph group flex flex-col justify-between rounded-3xl border shadow-md-1 hover:shadow-md-3 p-6 sm:p-7 [--md-tonal-base:var(--md-sys-color-surface-container)] [--md-tone-hover:11%]"
     >
       <StateLayer control={linkRef} shape="card" />
 
