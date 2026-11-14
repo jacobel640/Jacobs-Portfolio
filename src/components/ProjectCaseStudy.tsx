@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, FC } from 'react';
-import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate } from 'framer-motion';
-import type { AnimationPlaybackControls, PanInfo } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useRef, useState, FC, ReactNode } from 'react';
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform, animate } from 'framer-motion';
+import type { AnimationPlaybackControls, MotionValue, PanInfo } from 'framer-motion';
 import {
   Folder,
   Github,
@@ -18,13 +18,30 @@ import {
   Server,
   Loader2,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect';
 import { RichText } from './RichText';
 import { thumbFor } from '../data/projects';
 import type { Project, Screenshot } from '../data/projects';
-import { Link } from '../router';
+import { cn } from '../lib/cn';
+import { themeVars } from '../theme/color';
+import { ENTER, INDICATOR, motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
+import { Button, IconButton } from './md/Button';
+import { Reveal, RevealItem } from './md/Reveal';
+import { StateLayer } from './md/StateLayer';
 
 const SWIPE_DISTANCE_RATIO = 0.4;
+
+/**
+ * The lightbox arrows step aside while a swipe is in flight. Opacity is part of
+ * `md-shape-morph`'s transition, so this adds no transition of its own: a
+ * `transition-opacity` utility would replace that list and drop the press
+ * morph's animation with it.
+ */
+const ARROW_CLASS = (swiping: boolean): string =>
+  swiping
+    ? 'opacity-0 pointer-events-none'
+    : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100';
 
 /**
  * How far ahead a release is credited for the speed it still carries. A flick
@@ -81,6 +98,9 @@ interface LightboxPaneProps {
   shot: Screenshot;
   /** Position in the track: -1 previous, 0 current, 1 next. */
   slot: -1 | 0 | 1;
+  /** The track's offset and the frame's width, for the pane's depth. */
+  trackX: MotionValue<number>;
+  frameWidth: MotionValue<number>;
   ready: boolean;
   failed: boolean;
   onLoaded: (src: string) => void;
@@ -91,14 +111,28 @@ interface LightboxPaneProps {
  * One screenshot in the swipe track. The neighbours are mounted and painted
  * alongside the current one — that is what lets a drag pull the next image in
  * from the edge rather than play an animation once the finger is already gone.
+ *
+ * Each pane also reads its distance from the centre of the frame off the
+ * track, and recedes with it: a pane on its way out shrinks a little and dims,
+ * the one on its way in grows to full size. The step itself is unchanged (one
+ * frame width), so the gesture maths never sees the depth; it is the same
+ * carousel feel as MD3's, derived from the one value the finger drives.
  */
-const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoaded, onFailed }) => (
+const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, trackX, frameWidth, ready, failed, onLoaded, onFailed }) => {
+  const distance = useTransform([trackX, frameWidth], ([x, width]: number[]) =>
+    width ? Math.min(Math.abs(slot * width + x) / width, 1) : slot === 0 ? 0 : 1,
+  );
+  const scale = useTransform(distance, [0, 1], [1, 0.86]);
+  const shade = useTransform(distance, [0, 1], [0, 0.55]);
+
+  return (
   <div
     className={`absolute inset-0 ${
       slot === -1 ? '-translate-x-full' : slot === 1 ? 'translate-x-full' : ''
     }`}
     aria-hidden={slot === 0 ? undefined : 'true'}
   >
+    <motion.div style={{ scale }} className="absolute inset-0 overflow-hidden rounded-3xl bg-md-surface-dim">
     {/* The grid already fetched the thumbnail, so it paints immediately and
         holds the frame at the right size while the full-resolution PNG
         arrives — rather than an empty box with the close button floating in
@@ -115,7 +149,7 @@ const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoad
 
     {!ready && !failed && (
       <span className="absolute inset-0 flex items-center justify-center" role="status">
-        <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
+        <Loader2 className="w-8 h-8 text-md-primary animate-spin" />
         <span className="sr-only">Loading full-resolution screenshot</span>
       </span>
     )}
@@ -137,7 +171,51 @@ const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoad
         ready ? 'opacity-100' : 'opacity-0'
       }`}
     />
+
+    <motion.span aria-hidden="true" style={{ opacity: shade }} className="absolute inset-0 bg-black pointer-events-none" />
+    </motion.div>
   </div>
+  );
+};
+
+interface SectionTitleProps {
+  icon: LucideIcon;
+  tone: string;
+  className?: string;
+  children: ReactNode;
+}
+
+/** A case-study section heading: a tinted glyph and a title-medium label. */
+const SectionTitle: FC<SectionTitleProps> = ({ icon: Icon, tone, className, children }) => (
+  <h2 className={cn('text-title-md text-md-on-surface mb-3 flex items-center gap-2', className)}>
+    <Icon className={cn('w-4 h-4', tone)} aria-hidden="true" />
+    <span>{children}</span>
+  </h2>
+);
+
+interface FactListProps {
+  icon: LucideIcon;
+  tone: string;
+  title: string;
+  items: string[];
+  markTone: string;
+}
+
+/** A tonal card holding one checked list: the architecture, or the features. */
+const FactList: FC<FactListProps> = ({ icon, tone, title, items, markTone }) => (
+  <RevealItem className="bg-md-surface-container-low p-5 sm:p-6 rounded-3xl border border-md-outline-variant/60">
+    <SectionTitle icon={icon} tone={tone} className="pb-3 mb-4 border-b border-md-outline-variant/60">
+      {title}
+    </SectionTitle>
+    <ul className="space-y-3">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-md-on-surface-variant text-body-md">
+          <CheckCircle2 className={cn('w-4 h-4 mt-0.5 shrink-0', markTone)} aria-hidden="true" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  </RevealItem>
 );
 
 /**
@@ -156,6 +234,9 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   // True from the moment a swipe engages until the finger lifts, so the arrows
   // can get out of the way of the gesture.
   const [isSwiping, setIsSwiping] = useState(false);
+  // While the frame flies back to its thumbnail the page underneath is already
+  // the destination, so the overlay stops taking input.
+  const [isClosing, setIsClosing] = useState(false);
   // The frame's own width, which is both the drag limit and the distance one
   // step of the track covers. Measured rather than assumed: it changes with the
   // viewport.
@@ -168,6 +249,23 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   const [failedSrcs, setFailedSrcs] = useState<string[]>([]);
 
   const reduceMotion = useReducedMotion();
+
+  // The container transform: the frame's offset and scale relative to where it
+  // is laid out, plus the scrim and the controls, which fade on their own.
+  const frameX = useMotionValue(0);
+  const frameY = useMotionValue(0);
+  const frameScale = useMotionValue(1);
+  const frameOpacity = useMotionValue(1);
+  const scrimOpacity = useMotionValue(0);
+  const chromeOpacity = useMotionValue(0);
+  // The frame width as a motion value too, so each pane can derive its depth
+  // from the track without re-rendering on every drag frame.
+  const frameWidthValue = useMotionValue(0);
+
+  // One per thumbnail: where the frame grows from and returns to.
+  const thumbRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const filmstripRef = useRef<HTMLDivElement | null>(null);
+  const closingRef = useRef(false);
 
   // Horizontal offset of the whole three-pane track. The drag writes to it
   // directly, so the image tracks the finger one-to-one instead of animating
@@ -195,6 +293,9 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   );
   const shotCount = shots.length;
   const selectedImage = selectedIndex === null ? null : shots[selectedIndex] ?? null;
+  // Read by callbacks that must not be re-created on every step.
+  const selectedIndexRef = useRef(selectedIndex);
+  selectedIndexRef.current = selectedIndex;
   const canNavigate = shotCount > 1;
   const lightboxOpen = selectedImage !== null;
 
@@ -227,24 +328,111 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   }, []);
 
   const openImage = useCallback((index: number) => {
+    closingRef.current = false;
     setSelectedIndex(index);
   }, []);
 
+  /**
+   * The translation and scale that put the frame exactly over thumbnail
+   * `index`, or null when there is nothing on screen to aim at. Both pictures
+   * are 9:20, so one uniform scale matches them. The frame's own current
+   * transform is taken back out, so this is right even mid-animation.
+   */
+  const offsetToThumb = useCallback(
+    (index: number | null) => {
+      const frame = frameRef.current;
+      const thumb = index === null ? null : thumbRefs.current[index];
+      if (!frame || !thumb || !frame.offsetWidth) return null;
+      const t = thumb.getBoundingClientRect();
+      if (!t.width || t.bottom < 0 || t.top > window.innerHeight) return null;
+      const f = frame.getBoundingClientRect();
+      const centreX = f.left + f.width / 2 - frameX.get();
+      const centreY = f.top + f.height / 2 - frameY.get();
+      return {
+        x: t.left + t.width / 2 - centreX,
+        y: t.top + t.height / 2 - centreY,
+        scale: t.width / frame.offsetWidth,
+      };
+    },
+    [frameX, frameY],
+  );
+
+  // Open: start over the thumbnail, then grow into place on the slow spatial
+  // spring while the scrim fades up and the controls follow a beat later.
+  // A layout effect, so the first painted frame is already the small one.
+  useIsomorphicLayoutEffect(() => {
+    if (!lightboxOpen) return;
+    const from = reduceMotion ? null : offsetToThumb(selectedIndexRef.current);
+    const fade = motionScheme.standard.effects.default;
+
+    frameOpacity.jump(from ? 1 : 0);
+    frameX.jump(from?.x ?? 0);
+    frameY.jump(from?.y ?? 0);
+    frameScale.jump(from?.scale ?? (reduceMotion ? 1 : 0.94));
+    scrimOpacity.jump(0);
+    chromeOpacity.jump(0);
+
+    const grow = motionScheme.standard.spatial.slow;
+    const runs = [
+      animate(frameX, 0, grow),
+      animate(frameY, 0, grow),
+      animate(frameScale, 1, grow),
+      animate(frameOpacity, 1, fade),
+      animate(scrimOpacity, 1, fade),
+      animate(chromeOpacity, 1, { ...fade, delay: reduceMotion ? 0 : 0.12 }),
+    ];
+    return () => runs.forEach((run) => run.stop());
+  }, [lightboxOpen]);
+
+  // Close: the reverse, onto the thumbnail of the screenshot now showing, then
+  // unmount and hand focus back to that thumbnail. If it is scrolled out of
+  // view there is nothing to land on, so the frame settles back and fades.
   const closeLightbox = useCallback(() => {
-    setSelectedIndex(null);
-  }, []);
+    const index = selectedIndexRef.current;
+    if (index === null || closingRef.current) return;
+    closingRef.current = true;
+
+    const to = reduceMotion ? null : offsetToThumb(index);
+    const fade = motionScheme.standard.effects.fast;
+    const land = motionScheme.standard.spatial.default;
+    const runs = [animate(scrimOpacity, 0, fade), animate(chromeOpacity, 0, fade)];
+    if (to) {
+      runs.push(animate(frameX, to.x, land), animate(frameY, to.y, land), animate(frameScale, to.scale, land));
+    } else {
+      runs.push(animate(frameOpacity, 0, fade), animate(frameScale, reduceMotion ? 1 : 0.94, land));
+    }
+
+    setIsClosing(true);
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      setSelectedIndex(null);
+      setIsClosing(false);
+      closingRef.current = false;
+      thumbRefs.current[index]?.focus({ preventScroll: true });
+    };
+    Promise.all(runs).then(finish);
+    // Animations stall in a background tab; the overlay must not outlive them
+    // and sit invisibly over the page, swallowing every click.
+    window.setTimeout(finish, 900);
+  }, [chromeOpacity, frameOpacity, frameScale, frameX, frameY, offsetToThumb, reduceMotion, scrimOpacity]);
 
   // One step of the track is exactly one frame width, so the width has to be
   // known before any of the gesture maths means anything.
   useIsomorphicLayoutEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    const measure = () => setFrameWidth(frame.offsetWidth);
+    const measure = () => {
+      setFrameWidth(frame.offsetWidth);
+      frameWidthValue.set(frame.offsetWidth);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(frame);
     return () => observer.disconnect();
-  }, [lightboxOpen]);
+  }, [lightboxOpen, frameWidthValue]);
 
   const animateTrackTo = useCallback(
     (target: number) => {
@@ -279,6 +467,35 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
     },
     [shotCount, trackX],
   );
+
+  /** Jumps to any screenshot, sliding in from the side it lies on. */
+  const goToIndex = useCallback(
+    (target: number) => {
+      const current = selectedIndexRef.current;
+      if (current === null || target === current || shotCount < 2) return;
+      const step = target > current ? 1 : -1;
+      const width = frameRef.current?.offsetWidth ?? 0;
+      pendingTrackXRef.current = width ? trackX.get() + step * width : 0;
+      pendingVelocityRef.current = 0;
+      setSelectedIndex(target);
+    },
+    [shotCount, trackX],
+  );
+
+  // Keep the active frame of the filmstrip centred as the index moves. The
+  // strip is scrolled directly rather than with `scrollIntoView`, which also
+  // scrolls every scrollable ancestor — including the scroll-locked page,
+  // which then visibly slides sideways behind the lightbox.
+  useEffect(() => {
+    const strip = filmstripRef.current;
+    if (selectedIndex === null || !strip) return;
+    const thumb = strip.children[selectedIndex] as HTMLElement | undefined;
+    if (!thumb) return;
+    strip.scrollTo({
+      left: thumb.offsetLeft - (strip.clientWidth - thumb.offsetWidth) / 2,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  }, [selectedIndex, reduceMotion]);
 
   // Re-pin and release the track. Runs before paint, so the swap above is never
   // visible as a jump.
@@ -354,7 +571,7 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
 
   // Keep the page still behind the lightbox. `removeProperty` rather than
   // setting 'unset' — the shorthand would also clear the `overflow-x: hidden`
-  // that keeps the ambient glows from causing horizontal scroll.
+  // that guards the page against horizontal scroll.
   useEffect(() => {
     if (lightboxOpen) document.body.style.overflow = 'hidden';
     else document.body.style.removeProperty('overflow');
@@ -380,370 +597,427 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         goToImage(-1);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        goToIndex(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        goToIndex(shotCount - 1);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedImage, canNavigate, closeLightbox, goToImage]);
+  }, [selectedImage, canNavigate, closeLightbox, goToImage, goToIndex, shotCount]);
 
   const Icon = project.icon;
 
   return (
-    <article className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-      <div className="ambient-glow absolute top-32 right-1/4 w-[32rem] h-[32rem] bg-blue-900/10 rounded-full blur-[130px] pointer-events-none" />
-
-      <div className="relative z-10">
-        <Link
-          to="/#projects"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-blue-300 transition-colors mb-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 rounded-lg"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>All projects</span>
-        </Link>
-
-        <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-white/[0.08]">
-          <div className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/25 inline-flex items-center justify-center w-fit">
-            <Icon className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-400 mb-1.5">
-              {project.categoryLabel}
-            </p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              {project.title}
-            </h1>
-          </div>
+    // The page takes the project's own Material You scheme, surfaces and all.
+    // Every `md-*` utility and the MD3 web components inside resolve to it, so
+    // each case study reads as its own product within the same system.
+    <article
+      style={themeVars(project.seed)}
+      className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24"
+    >
+      {/* A large-container surface with its own top app bar. The case study is a
+          page rather than a modal (so it can be prerendered and linked), but it
+          enters like an MD3 dialog: a short rise on the slow spatial spring. */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={ENTER}
+        className="relative z-10 rounded-[28px] bg-md-surface-container-high border border-md-outline-variant/60 shadow-md-2 overflow-hidden"
+      >
+        <div className="flex items-center justify-between gap-3 h-16 px-3 sm:px-4 bg-md-surface-container-highest border-b border-md-outline-variant/60">
+          <Button variant="text" to="/#projects" icon={ArrowLeft}>
+            All projects
+          </Button>
           {project.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/60 w-fit h-fit">
-              <Lock className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md bg-md-surface-container-high text-md-on-surface-variant">
+              <Lock className="w-3 h-3" aria-hidden="true" />
               Private
             </span>
           )}
-        </header>
+        </div>
 
-        {/* The card blurb, as the page's standfirst. */}
-        <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-10">
-          {project.description}
-        </p>
+        <div className="p-5 sm:p-8 lg:p-10">
+          <Reveal immediate stagger={0.08} delay={0.1}>
+            <RevealItem>
+              <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-md-outline-variant/60">
+                <div className="p-4 rounded-[20px] bg-md-primary-container text-md-on-primary-container inline-flex items-center justify-center w-fit">
+                  <Icon className="w-7 h-7" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-label-lg uppercase tracking-wider text-md-primary mb-1.5">{project.categoryLabel}</p>
+                  <h1 className="text-headline-lg sm:text-display-sm lg:text-display-md text-md-on-surface text-balance">
+                    {project.title}
+                  </h1>
+                </div>
+              </header>
+            </RevealItem>
 
-        <div className="space-y-8">
-                {/* Overview */}
-                <div>
-                  <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-blue-400" />
-                    <span>Project Overview</span>
-                  </h4>
-                  <div className="space-y-4 text-slate-300 text-sm sm:text-base leading-relaxed bg-white/[0.02] p-5 sm:p-6 rounded-2xl border border-white/[0.06]">
-                    {project.detailedContent.overview.map((paragraph, idx) => (
-                      // The opening paragraph reads as a lead: slightly larger and
-                      // brighter, so the eye has an obvious place to start.
-                      <p
-                        key={idx}
-                        className={
-                          idx === 0
-                            ? 'text-base sm:text-lg text-slate-100 leading-relaxed'
-                            : undefined
-                        }
+            {/* The card blurb, as the page's standfirst. */}
+            <RevealItem>
+              <p className="text-body-lg sm:text-title-lg sm:font-normal text-md-on-surface-variant mb-10 text-pretty">
+                {project.description}
+              </p>
+            </RevealItem>
+          </Reveal>
+
+          <div className="space-y-8">
+            {/* Overview */}
+            <Reveal>
+              <RevealItem>
+                <SectionTitle icon={Folder} tone="text-md-primary">
+                  Project Overview
+                </SectionTitle>
+              </RevealItem>
+              <RevealItem className="space-y-4 text-md-on-surface-variant text-body-md sm:text-body-lg bg-md-surface-container-low p-5 sm:p-6 rounded-3xl border border-md-outline-variant/60">
+                {project.detailedContent.overview.map((paragraph, idx) => (
+                  // The opening paragraph reads as a lead: slightly larger and
+                  // brighter, so the eye has an obvious place to start.
+                  <p key={idx} className={idx === 0 ? 'text-body-lg sm:text-lg text-md-on-surface' : undefined}>
+                    <RichText>{paragraph}</RichText>
+                  </p>
+                ))}
+              </RevealItem>
+            </Reveal>
+
+            {/* Architecture & Features */}
+            <Reveal stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FactList
+                icon={Server}
+                tone="text-md-secondary"
+                title="Architecture & Engineering"
+                items={project.detailedContent.architecture}
+                markTone="text-md-success"
+              />
+              <FactList
+                icon={Sparkles}
+                tone="text-md-tertiary"
+                title="Key Features & Highlights"
+                items={project.detailedContent.features}
+                markTone="text-md-primary"
+              />
+            </Reveal>
+
+            {/* Tech stack */}
+            <Reveal>
+              <RevealItem>
+                <SectionTitle icon={Layers} tone="text-md-tertiary">
+                  Technology Stack
+                </SectionTitle>
+              </RevealItem>
+              <motion.ul variants={revealContainer(0.03)} className="flex flex-wrap gap-2">
+                {project.tags.map((tag) => (
+                  <motion.li
+                    key={tag}
+                    variants={revealItem}
+                    className="inline-flex items-center h-8 px-3.5 text-label-lg rounded-lg bg-md-secondary-container text-md-on-secondary-container"
+                  >
+                    {tag}
+                  </motion.li>
+                ))}
+              </motion.ul>
+            </Reveal>
+
+            {/* Screenshots */}
+            <Reveal>
+              <RevealItem className="flex items-center justify-between gap-4 mb-4">
+                <SectionTitle icon={ImageIcon} tone="text-md-secondary" className="mb-0">
+                  Screenshots &amp; Visual Artifacts
+                </SectionTitle>
+                {shots.length > 0 && (
+                  // A pointer hint; on a phone the thumbnails explain themselves.
+                  <span className="hidden sm:inline text-body-sm text-md-on-surface-variant shrink-0">Click any image to zoom</span>
+                )}
+              </RevealItem>
+
+              {shots.length > 0 ? (
+                <motion.div variants={revealContainer(0.05)} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {shots.map((shot, index) => (
+                    <motion.figure key={shot.src} variants={revealItem} className="m-0">
+                      <button
+                        ref={(node) => {
+                          thumbRefs.current[index] = node;
+                        }}
+                        type="button"
+                        onClick={() => openImage(index)}
+                        aria-label={`Zoom: ${shot.caption}`}
+                        className="md-interactive md-shape-morph group block w-full rounded-2xl hover:rounded-[28px] aspect-[9/20] shadow-md-1 hover:shadow-md-3 cursor-zoom-in"
                       >
-                        <RichText>{paragraph}</RichText>
-                      </p>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Architecture & Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Architecture */}
-                  <div className="bg-slate-950/40 p-5 rounded-2xl border border-white/[0.06]">
-                    <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-2.5">
-                      <Server className="w-4 h-4 text-indigo-400" />
-                      <span>Architecture &amp; Engineering</span>
-                    </h4>
-                    <ul className="space-y-3">
-                      {project.detailedContent.architecture.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-slate-300 text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Key Features */}
-                  <div className="bg-slate-950/40 p-5 rounded-2xl border border-white/[0.06]">
-                    <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2 border-b border-white/[0.06] pb-2.5">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>Key Features &amp; Highlights</span>
-                    </h4>
-                    <ul className="space-y-3">
-                      {project.detailedContent.features.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-slate-300 text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Tech Stack */}
-                <div>
-                  <h4 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-purple-400" />
-                    <span>Technology Stack</span>
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/[0.05] text-slate-200 border border-white/[0.08] shadow-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Screenshots & Media Section */}
-                <div>
-                  <h4 className="text-base font-bold text-white mb-4 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-pink-400" />
-                      <span>Screenshots &amp; Visual Artifacts</span>
-                    </span>
-                    {shots.length > 0 && (
-                      <span className="text-xs font-normal text-slate-400">
-                        Click any image to zoom
-                      </span>
-                    )}
-                  </h4>
-
-                  {shots.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {shots.map((shot, index) => (
-                        <figure key={shot.src} className="m-0">
-                          <button
-                            type="button"
-                            onClick={() => openImage(index)}
-                            aria-label={`Zoom: ${shot.caption}`}
-                            className="group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-white/[0.08] hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
-                          >
-                            <img
-                              src={thumbFor(shot.src)}
-                              alt={`${project.title} — ${shot.caption}`}
-                              loading="lazy"
-                              decoding="async"
-                              width={432}
-                              height={960}
-                              onError={(e) => {
-                                // Fall back to the original PNG if the WebP thumb is missing.
-                                const img = e.currentTarget;
-                                if (img.src !== shot.src) img.src = shot.src;
-                              }}
-                              className="block w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                            />
-                            <span className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
-                              <span className="p-1.5 rounded-lg bg-blue-600/90 text-white">
-                                <ZoomIn className="w-3.5 h-3.5" />
-                              </span>
+                        {/* The image clips to the button's live radius, so the
+                            corner morph on hover reshapes the picture too. */}
+                        <span className="absolute inset-0 overflow-hidden rounded-[inherit] border border-md-outline-variant/60">
+                          <img
+                            src={thumbFor(shot.src)}
+                            alt={`${project.title} — ${shot.caption}`}
+                            loading="lazy"
+                            decoding="async"
+                            width={432}
+                            height={960}
+                            onError={(e) => {
+                              // Fall back to the original PNG if the WebP thumb is missing.
+                              const img = e.currentTarget;
+                              if (img.src !== shot.src) img.src = shot.src;
+                            }}
+                            className="block w-full h-full object-cover transition-transform duration-spatial-slow ease-spatial-slow group-hover:scale-[1.04]"
+                          />
+                          <span className="absolute inset-0 bg-gradient-to-t from-md-surface-dim/95 via-md-surface-dim/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-effects ease-effects flex items-end justify-end p-2.5">
+                            <span className="p-1.5 rounded-full bg-md-primary text-md-on-primary translate-y-1 group-hover:translate-y-0 transition-transform duration-spatial ease-spatial">
+                              <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
                             </span>
-                          </button>
-                          <figcaption className="mt-2 text-[11px] leading-snug text-slate-400 text-center px-1">
-                            {shot.caption}
-                          </figcaption>
-                        </figure>
-                      ))}
+                          </span>
+                        </span>
+                        <StateLayer shape="large" />
+                      </button>
+                      <figcaption className="mt-2 text-label-sm font-normal text-md-on-surface-variant text-center px-1">
+                        {shot.caption}
+                      </figcaption>
+                    </motion.figure>
+                  ))}
+                </motion.div>
+              ) : (
+                <RevealItem className="rounded-3xl border border-md-outline-variant/60 bg-md-surface-container-low p-8 text-center">
+                  <ImageIcon className="w-10 h-10 mx-auto text-md-outline mb-3 opacity-70" aria-hidden="true" />
+                  <p className="text-title-sm text-md-on-surface-variant">No screenshots available to display</p>
+                </RevealItem>
+              )}
+            </Reveal>
+
+            {/* Repository & live demo */}
+            <Reveal>
+              <RevealItem className="bg-md-surface-container-low rounded-3xl p-5 sm:p-6 border border-md-outline-variant/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-title-md text-md-on-surface mb-1">Project Repository &amp; Delivery</h2>
+                  <p className="text-body-md text-md-on-surface-variant max-w-md">
+                    {project.isPrivate
+                      ? 'This repository is private due to client confidentiality, enterprise credentials, or proprietary intellectual property.'
+                      : 'Explore the full source code, commit history, and architectural implementation on GitHub.'}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  {project.isPrivate ? (
+                    <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-5 rounded-full bg-md-surface-container-highest text-md-on-surface-variant text-label-lg">
+                      <Lock className="w-4 h-4" aria-hidden="true" />
+                      <span>Private Repository</span>
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-white/[0.08] bg-slate-950/40 p-8 text-center backdrop-blur-sm">
-                      <ImageIcon className="w-10 h-10 mx-auto text-slate-500 mb-3 opacity-70" />
-                      <p className="text-sm font-medium text-slate-400">
-                        No screenshots available to display
-                      </p>
-                    </div>
+                  ) : project.github ? (
+                    <Button
+                      href={project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      icon={Github}
+                      className="w-full sm:w-auto"
+                    >
+                      Source Code
+                    </Button>
+                  ) : null}
+
+                  {project.demo && (
+                    <Button
+                      variant="tonal"
+                      href={project.demo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      icon={ExternalLink}
+                      className="w-full sm:w-auto"
+                    >
+                      Live Demo
+                    </Button>
                   )}
                 </div>
-
-                {/* Repository & Live Demo Actions */}
-                <div className="bg-slate-950/50 rounded-2xl p-5 sm:p-6 border border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div>
-                    <h5 className="text-white font-semibold text-sm sm:text-base mb-1">
-                      Project Repository &amp; Delivery
-                    </h5>
-                    <p className="text-xs sm:text-sm text-slate-400 max-w-md">
-                      {project.isPrivate
-                        ? 'This repository is private due to client confidentiality, enterprise credentials, or proprietary intellectual property.'
-                        : 'Explore the full source code, commit history, and architectural implementation on GitHub.'}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                    {project.isPrivate ? (
-                      <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800/80 text-slate-400 border border-white/[0.06] text-xs sm:text-sm font-medium">
-                        <Lock className="w-4 h-4" />
-                        <span>Private Repository</span>
-                      </div>
-                    ) : project.github ? (
-                      <a
-                        href={project.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
-                      >
-                        <Github className="w-4 h-4" />
-                        <span>Source Code</span>
-                      </a>
-                    ) : null}
-
-                    {project.demo && (
-                      <a
-                        href={project.demo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Live Demo</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
+              </RevealItem>
+            </Reveal>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Lightbox / Zoom Overlay */}
-      <AnimatePresence>
-        {selectedImage && (
+      {/* Lightbox. It opens as an MD3 container transform: the frame starts
+          exactly over the thumbnail that was pressed and grows into place, and
+          closing carries it back onto the thumbnail of whichever screenshot
+          is showing by then. The scrim and the controls fade separately, so
+          the picture is never hidden behind its own chrome while it moves. */}
+      {selectedImage && selectedIndex !== null && (
+        <div
+          className={cn('fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6', isClosing && 'pointer-events-none')}
+          /* Every press starts out as a plain click; only a drag that actually
+             engages flips the flag, and the next press clears it again, so a
+             stale flag can never swallow a real dismissal. */
+          onPointerDownCapture={() => {
+            swipedRef.current = false;
+          }}
+          onClick={dismissLightbox}
+        >
+          <motion.div aria-hidden="true" style={{ opacity: scrimOpacity }} className="absolute inset-0 bg-black/85" />
+
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-2xl"
-            /* Every press starts out as a plain click; only a drag that actually
-               engages flips the flag, and the next press clears it again, so a
-               stale flag can never swallow a real dismissal. */
-            onPointerDownCapture={() => {
-              swipedRef.current = false;
-            }}
-            onClick={dismissLightbox}
+            role="dialog"
+            aria-modal="true"
+            aria-label={selectedImage.caption}
+            className="relative max-w-5xl max-h-[94vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-label={selectedImage.caption}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
+            <motion.div style={{ opacity: chromeOpacity }} className="absolute -top-14 right-0">
+              <IconButton
+                icon={X}
+                variant="tonal"
                 onClick={closeLightbox}
                 autoFocus
-                className="absolute -top-12 right-0 p-2 text-slate-300 hover:text-white bg-white/[0.1] hover:bg-white/[0.2] border border-white/[0.15] rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
                 aria-label="Close image preview"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              />
+            </motion.div>
 
-              {/* Arrows flank the image rather than sitting on top of it, so
-                  nothing covers the screenshot. They are laid out first, which
-                  is why the frame gives up the width they need: its height is
-                  capped by what is left over once both buttons, the gaps and
-                  the overlay's own padding are taken out of the viewport. */}
-              <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
-                {canNavigate && (
-                  <button
-                    type="button"
+            {/* Arrows flank the image rather than sitting on top of it, so
+                nothing covers the screenshot. They are laid out first, which
+                is why the frame gives up the width they need: its height is
+                capped by what is left over once both buttons, the gaps and
+                the overlay's own padding are taken out of the viewport. */}
+            <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
+              {canNavigate && (
+                <motion.div style={{ opacity: chromeOpacity }}>
+                  <IconButton
+                    icon={ChevronLeft}
+                    variant="tonal"
                     onClick={() => goToImage(-1)}
                     aria-label="Previous screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
-                      isSwiping
-                        ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
-                    }`}
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
+                    className={ARROW_CLASS(isSwiping)}
+                  />
+                </motion.div>
+              )}
+
+              <motion.div
+                ref={frameRef}
+                style={{ x: frameX, y: frameY, scale: frameScale, opacity: frameOpacity }}
+                className={cn(
+                  'relative aspect-[9/20] h-[68vh] overflow-hidden rounded-3xl shadow-md-3 bg-md-surface-dim',
+                  canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full',
                 )}
-
-                <div
-                  ref={frameRef}
-                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-white/[0.15] shadow-2xl bg-slate-950 ${
-                    canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full'
-                  }`}
+              >
+                {/* The track carries all three panes at once. Dragging moves
+                    the track itself, so the neighbour really does come in
+                    from the edge under the finger; releasing hands the same
+                    offset to the settle animation. */}
+                <motion.div
+                  className={`absolute inset-0 ${canNavigate ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  style={{ x: trackX }}
+                  drag={canNavigate ? 'x' : false}
+                  dragDirectionLock
+                  dragConstraints={{ left: -frameWidth, right: frameWidth }}
+                  dragElastic={0.12}
+                  dragMomentum={false}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 >
-                  {/* The track carries all three panes at once. Dragging moves
-                      the track itself, so the neighbour really does come in
-                      from the edge under the finger; releasing hands the same
-                      offset to the settle animation. */}
-                  <motion.div
-                    className={`absolute inset-0 ${
-                      canNavigate ? 'cursor-grab active:cursor-grabbing' : ''
-                    }`}
-                    style={{ x: trackX }}
-                    drag={canNavigate ? 'x' : false}
-                    dragDirectionLock
-                    dragConstraints={{ left: -frameWidth, right: frameWidth }}
-                    dragElastic={0.12}
-                    dragMomentum={false}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  >
-                    {trackPanes.map(({ shot, slot }) => (
-                      <LightboxPane
-                        key={slot}
-                        shot={shot}
-                        slot={slot}
-                        ready={loadedSrcs.includes(shot.src)}
-                        // A full-resolution PNG that will not load leaves the
-                        // thumbnail standing in for it — sharp rather than
-                        // blurred, so it reads as the picture instead of a
-                        // stalled preview.
-                        failed={!loadedSrcs.includes(shot.src) && failedSrcs.includes(shot.src)}
-                        onLoaded={markLoaded}
-                        onFailed={markFailed}
-                      />
-                    ))}
-                  </motion.div>
-                </div>
+                  {trackPanes.map(({ shot, slot }) => (
+                    <LightboxPane
+                      key={slot}
+                      shot={shot}
+                      slot={slot}
+                      trackX={trackX}
+                      frameWidth={frameWidthValue}
+                      ready={loadedSrcs.includes(shot.src)}
+                      // A full-resolution PNG that will not load leaves the
+                      // thumbnail standing in for it — sharp rather than
+                      // blurred, so it reads as the picture instead of a
+                      // stalled preview.
+                      failed={!loadedSrcs.includes(shot.src) && failedSrcs.includes(shot.src)}
+                      onLoaded={markLoaded}
+                      onFailed={markFailed}
+                    />
+                  ))}
+                </motion.div>
+              </motion.div>
 
-                {canNavigate && (
-                  <button
-                    type="button"
+              {canNavigate && (
+                <motion.div style={{ opacity: chromeOpacity }}>
+                  <IconButton
+                    icon={ChevronRight}
+                    variant="tonal"
                     onClick={() => goToImage(1)}
                     aria-label="Next screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`shrink-0 p-2 sm:p-2.5 rounded-2xl text-slate-400 hover:text-blue-300 bg-white/[0.05] hover:bg-blue-500/15 border border-white/[0.08] hover:border-blue-400/30 shadow-glass-sm backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
-                      isSwiping
-                        ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
-                    }`}
+                    className={ARROW_CLASS(isSwiping)}
+                  />
+                </motion.div>
+              )}
+            </div>
+
+            <motion.div style={{ opacity: chromeOpacity }} className="mt-3 flex flex-col items-center gap-2.5 w-full min-w-0">
+              {/* The caption changes with the picture: the old one lifts away
+                  as the new one rises in, on the fast effects spring. */}
+              <div className="relative h-6 w-full overflow-hidden text-center" aria-live="polite">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.p
+                    key={selectedIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={spatialWithEffects(motionScheme.standard.spatial.fast, motionScheme.standard.effects.fast)}
+                    className="absolute inset-x-0 text-label-lg text-md-on-surface truncate px-2"
                   >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                )}
+                    {selectedImage.caption}
+                    {canNavigate && (
+                      <span className="ml-2 font-normal text-md-on-surface-variant tabular-nums">
+                        {selectedIndex + 1} / {shotCount}
+                      </span>
+                    )}
+                  </motion.p>
+                </AnimatePresence>
               </div>
 
-              <p
-                className="mt-3 text-xs sm:text-sm text-slate-300 font-medium tracking-wide text-center px-2"
-                aria-live="polite"
-              >
-                {selectedImage.caption}
-              </p>
-
-              {canNavigate && selectedIndex !== null && (
-                <p className="mt-1 text-[11px] text-slate-500 tracking-wide">
-                  {selectedIndex + 1} / {shotCount}
-                  <span className="sr-only">
-                    {' '}
-                    — swipe or use the arrow keys to move between screenshots
-                  </span>
-                </p>
+              {/* Filmstrip: every screenshot at a glance, and a direct way to
+                  any of them. The active marker travels between frames on the
+                  expressive spring, like the navigation indicator. */}
+              {canNavigate && (
+                <div
+                  ref={filmstripRef}
+                  role="group"
+                  aria-label="All screenshots"
+                  className="relative flex items-center gap-2 max-w-full overflow-x-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {shots.map((shot, index) => {
+                    const active = index === selectedIndex;
+                    return (
+                      <button
+                        key={shot.src}
+                        type="button"
+                        onClick={() => goToIndex(index)}
+                        aria-label={`Screenshot ${index + 1}: ${shot.caption}`}
+                        aria-current={active ? 'true' : undefined}
+                        className={cn(
+                          'md-interactive shrink-0 w-6 sm:w-7 aspect-[9/20] rounded-md transition-opacity duration-effects ease-effects',
+                          active ? 'opacity-100' : 'opacity-45 hover:opacity-90 focus-visible:opacity-100',
+                        )}
+                      >
+                        <img
+                          src={thumbFor(shot.src)}
+                          alt=""
+                          draggable={false}
+                          loading="lazy"
+                          className="w-full h-full object-cover rounded-md select-none"
+                        />
+                        {active && (
+                          <motion.span
+                            layoutId="lightbox-filmstrip-active"
+                            transition={INDICATOR}
+                            className="absolute -inset-[3px] rounded-[9px] border-2 border-md-primary pointer-events-none"
+                          />
+                        )}
+                        <StateLayer shape="small" />
+                      </button>
+                    );
+                  })}
+                </div>
               )}
+
+              <span className="sr-only">Swipe, use the arrow keys, or pick a screenshot below to move between them.</span>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </article>
   );
 };

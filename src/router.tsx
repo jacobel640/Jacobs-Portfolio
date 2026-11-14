@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, FC, MouseEvent, ReactNode } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useState, FC, MouseEvent, ReactNode } from 'react';
+import type { AnchorHTMLAttributes } from 'react';
 
 import { RouterContext, normalisePath, useRouter } from './router-core';
 
@@ -43,13 +44,12 @@ export const RouterProvider: FC<{ initialPath: string; children: ReactNode }> = 
  * clicks are the browser's to handle, and stealing them breaks "open in new
  * tab" in a way people notice immediately.
  */
-export const Link: FC<{
+export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
   to: string;
   children: ReactNode;
-  className?: string;
-  'aria-label'?: string;
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-}> = ({ to, children, onClick, ...rest }) => {
+}
+
+export const Link = forwardRef<HTMLAnchorElement, LinkProps>(({ to, children, onClick, ...rest }, ref) => {
   const { navigate } = useRouter();
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -62,8 +62,9 @@ export const Link: FC<{
   };
 
   return (
-    <a href={to} onClick={handleClick} {...rest}>
+    <a ref={ref} href={to} onClick={handleClick} {...rest}>
       {children}
     </a>
   );
-};
+});
+Link.displayName = 'Link';

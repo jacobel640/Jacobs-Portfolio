@@ -2,6 +2,12 @@ import React from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import App from './App.tsx'
 import { RouterProvider } from './router'
+import '@fontsource-variable/roboto'
+// The MD3 ripple and focus ring. Registered here rather than in the components
+// that render them: this entry only runs in the browser, so the prerender pass
+// never loads Lit, and the elements are defined before hydration starts.
+import '@material/web/ripple/ripple.js'
+import '@material/web/focus/md-focus-ring.js'
 import './index.css'
 
 const container = document.getElementById('root')!

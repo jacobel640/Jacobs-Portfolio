@@ -8,8 +8,9 @@
  * Assertions:
  * 1. `public/screenshots/taskflow` exists and contains 9 expected PNG files.
  * 2. `public/screenshots/files-migration` exists and contains 13 expected PNG files.
- * 3. Total screenshot count is exactly 22.
- * 4. Each screenshot file has non-zero size (> 1024 bytes) and valid PNG header bytes.
+ * 3. `public/screenshots/minim4you` exists and contains 8 expected PNG files.
+ * 4. Total screenshot count is exactly 30.
+ * 5. Each screenshot file has non-zero size (> 1024 bytes) and valid PNG header bytes.
  */
 
 import { existsSync, readdirSync, statSync, openSync, readSync, closeSync } from 'fs';
@@ -31,6 +32,17 @@ const EXPECTED_TASKFLOW_FILES = [
   'HomeScreen_mark-completed_undo-deletion.png',
   'NotificationTimeDialog.png',
   'app_icon.png'
+];
+
+const EXPECTED_MINIM4YOU_FILES = [
+  'conversation_queue.png',
+  'bot_order_flow.png',
+  'human_handover.png',
+  'customer_context.png',
+  'broadcast_campaigns.png',
+  'campaign_progress.png',
+  'campaign_template.png',
+  'conversation_queue_dark.png'
 ];
 
 const EXPECTED_FILES_MIGRATION_FILES = [
@@ -86,77 +98,52 @@ if (!existsSync(SCREENSHOTS_DIR)) {
   failures.push(`Screenshots base directory does not exist: ${SCREENSHOTS_DIR}`);
 }
 
-// 2. Check TaskFlow screenshots
-const taskflowDir = join(SCREENSHOTS_DIR, 'taskflow');
-console.log('\n📸 Verifying TaskFlow Screenshots (id: taskflow)...');
-if (!existsSync(taskflowDir)) {
-  hasErrors = true;
-  failures.push(`TaskFlow screenshots directory does not exist: ${taskflowDir}`);
-} else {
+// 2. Check each project's screenshots
+const PROJECT_SETS = [
+  { label: 'TaskFlow', dir: 'taskflow', files: EXPECTED_TASKFLOW_FILES },
+  { label: 'Files Migration', dir: 'files-migration', files: EXPECTED_FILES_MIGRATION_FILES },
+  { label: 'Minim4You', dir: 'minim4you', files: EXPECTED_MINIM4YOU_FILES },
+];
+
+for (const set of PROJECT_SETS) {
+  const setDir = join(SCREENSHOTS_DIR, set.dir);
+  console.log(`
+📸 Verifying ${set.label} Screenshots (id: ${set.dir})...`);
+  if (!existsSync(setDir)) {
+    hasErrors = true;
+    failures.push(`${set.label} screenshots directory does not exist: ${setDir}`);
+    continue;
+  }
   let validCount = 0;
-  for (const file of EXPECTED_TASKFLOW_FILES) {
-    const filePath = join(taskflowDir, file);
+  for (const file of set.files) {
+    const filePath = join(setDir, file);
     if (!existsSync(filePath)) {
       hasErrors = true;
-      failures.push(`Missing TaskFlow screenshot: ${file}`);
+      failures.push(`Missing ${set.label} screenshot: ${file}`);
       console.log(`   ❌ [MISSING] ${file}`);
-    } else {
-      const stat = statSync(filePath);
-      const isPng = isValidPng(filePath);
-      if (stat.size < 1024) {
-        hasErrors = true;
-        failures.push(`TaskFlow screenshot file too small or empty: ${file} (${stat.size} bytes)`);
-        console.log(`   ❌ [INVALID SIZE] ${file} (${stat.size} bytes)`);
-      } else if (!isPng) {
-        hasErrors = true;
-        failures.push(`TaskFlow screenshot corrupted/invalid PNG header: ${file}`);
-        console.log(`   ❌ [CORRUPTED PNG] ${file}`);
-      } else {
-        validCount++;
-        console.log(`   ✅ [OK] ${file.padEnd(45)} ${(stat.size / 1024).toFixed(1)} KB`);
-      }
+      continue;
     }
-  }
-  console.log(`   Summary: ${validCount}/${EXPECTED_TASKFLOW_FILES.length} TaskFlow screenshots verified.`);
-}
-
-// 3. Check Files App Migration screenshots
-const filesDir = join(SCREENSHOTS_DIR, 'files-migration');
-console.log('\n📸 Verifying Files Migration Screenshots (id: files-migration)...');
-if (!existsSync(filesDir)) {
-  hasErrors = true;
-  failures.push(`Files Migration screenshots directory does not exist: ${filesDir}`);
-} else {
-  let validCount = 0;
-  for (const file of EXPECTED_FILES_MIGRATION_FILES) {
-    const filePath = join(filesDir, file);
-    if (!existsSync(filePath)) {
+    const stat = statSync(filePath);
+    if (stat.size < 1024) {
       hasErrors = true;
-      failures.push(`Missing Files Migration screenshot: ${file}`);
-      console.log(`   ❌ [MISSING] ${file}`);
+      failures.push(`${set.label} screenshot file too small or empty: ${file} (${stat.size} bytes)`);
+      console.log(`   ❌ [INVALID SIZE] ${file} (${stat.size} bytes)`);
+    } else if (!isValidPng(filePath)) {
+      hasErrors = true;
+      failures.push(`${set.label} screenshot corrupted/invalid PNG header: ${file}`);
+      console.log(`   ❌ [CORRUPTED PNG] ${file}`);
     } else {
-      const stat = statSync(filePath);
-      const isPng = isValidPng(filePath);
-      if (stat.size < 1024) {
-        hasErrors = true;
-        failures.push(`Files Migration screenshot file too small or empty: ${file} (${stat.size} bytes)`);
-        console.log(`   ❌ [INVALID SIZE] ${file} (${stat.size} bytes)`);
-      } else if (!isPng) {
-        hasErrors = true;
-        failures.push(`Files Migration screenshot corrupted/invalid PNG header: ${file}`);
-        console.log(`   ❌ [CORRUPTED PNG] ${file}`);
-      } else {
-        validCount++;
-        console.log(`   ✅ [OK] ${file.padEnd(45)} ${(stat.size / 1024).toFixed(1)} KB`);
-      }
+      validCount++;
+      console.log(`   ✅ [OK] ${file.padEnd(45)} ${(stat.size / 1024).toFixed(1)} KB`);
     }
   }
-  console.log(`   Summary: ${validCount}/${EXPECTED_FILES_MIGRATION_FILES.length} Files Migration screenshots verified.`);
+  console.log(`   Summary: ${validCount}/${set.files.length} ${set.label} screenshots verified.`);
 }
 
-// 4. Check total file count
-const totalExpected = EXPECTED_TASKFLOW_FILES.length + EXPECTED_FILES_MIGRATION_FILES.length;
-console.log(`\n📊 Total Expected Screenshots: ${totalExpected} (9 TaskFlow + 13 Files Migration)`);
+// 3. Check total file count
+const totalExpected = PROJECT_SETS.reduce((sum, set) => sum + set.files.length, 0);
+console.log(`
+📊 Total Expected Screenshots: ${totalExpected} (${PROJECT_SETS.map((set) => `${set.files.length} ${set.label}`).join(' + ')})`);
 
 if (hasErrors) {
   console.error('\n❌ SCREENSHOT ASSET VERIFICATION FAILED:');
@@ -165,5 +152,6 @@ if (hasErrors) {
   process.exit(1);
 }
 
-console.log('\n✅ PASS: All 22 project screenshots exist, are non-empty, and contain valid PNG headers.');
+console.log(`
+✅ PASS: All ${totalExpected} project screenshots exist, are non-empty, and contain valid PNG headers.`);
 process.exit(0);

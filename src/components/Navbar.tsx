@@ -1,7 +1,12 @@
-import { useState, useEffect, useRef, FC } from 'react';
+import { useState, useEffect, useRef, FC, MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Code2, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { Menu, X, Code2, MessageCircle, Github } from 'lucide-react';
 import { useRouter, normalisePath } from '../router-core';
+import { cn } from '../lib/cn';
+import { INDICATOR, motionScheme, spatialWithEffects } from '../theme/motion';
+import { Button, IconButton } from './md/Button';
+import { Reveal, RevealItem } from './md/Reveal';
+import { StateLayer } from './md/StateLayer';
 
 interface NavItem {
   name: string;
@@ -122,160 +127,158 @@ export const Navbar: FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [mobileMenuOpen]);
 
+  /** A nav destination's anchor props: real href, in-page glide on click. */
+  const destination = (href: string) => ({
+    href: hrefFor(href),
+    onClick: (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      handleNavClick(href);
+    },
+  });
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center px-4 pt-4 sm:pt-6 pointer-events-none">
+      {/* MD3 elevated top app bar, floating: a tonal surface container lifted by
+          an elevation shadow rather than by blur. On scroll it steps up one
+          surface tone and two elevation levels, the MD3 "scrolled" state. */}
       <nav
         aria-label="Main Navigation"
-        className={`pointer-events-auto flex items-center justify-between w-full max-w-5xl px-4 sm:px-6 py-2.5 sm:py-3 rounded-full transition-all duration-300 ${
-          isScrolled
-            ? 'bg-slate-900/75 backdrop-blur-xl border border-white/[0.12] shadow-2xl shadow-black/50'
-            : 'bg-slate-900/50 backdrop-blur-lg border border-white/[0.08] shadow-lg shadow-black/20'
-        }`}
+        className={cn(
+          'pointer-events-auto flex items-center justify-between w-full max-w-5xl px-2 sm:px-3 py-2 rounded-full border border-md-outline-variant/60',
+          'transition-[background-color,box-shadow] duration-effects ease-effects',
+          isScrolled ? 'bg-md-surface-container-high/95 shadow-md-3' : 'bg-md-surface-container/90 shadow-md-1',
+        )}
       >
-        {/* Brand Monogram */}
+        {/* Brand monogram. The badge morphs from a circle to a rounded square
+            on hover: MD3 Expressive's shape change as the hover signal. */}
         <a
-          href={hrefFor('#hero')}
-          onClick={(e) => {
-            e.preventDefault();
-            handleNavClick('#hero');
-          }}
-          className="group flex items-center gap-2.5 text-white font-bold tracking-tight rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+          {...destination('#hero')}
+          className="md-interactive group flex items-center gap-2.5 pl-1 pr-3 py-1 rounded-full text-md-on-surface"
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <Code2 className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-base sm:text-lg font-semibold tracking-tight text-white group-hover:text-blue-400 transition-colors">
-            Jacob<span className="text-blue-400 font-normal">.dev</span>
+          <StateLayer />
+          {/* public/favicon.svg draws this exact mark: same 36px circle, 20px
+              glyph and stroke weight. Change one, change the other. */}
+          <span className="md-shape-morph flex items-center justify-center w-9 h-9 rounded-[18px] group-hover:rounded-xl bg-md-primary text-md-on-primary">
+            <Code2 className="w-5 h-5" strokeWidth={2.5} aria-hidden="true" />
+          </span>
+          <span className="text-title-md sm:text-title-lg tracking-tight">
+            Jacob<span className="text-md-primary font-normal">.dev</span>
           </span>
         </a>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-1 bg-slate-950/40 p-1 rounded-full border border-white/[0.06]">
+        {/* Desktop navigation */}
+        <div className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
-            const sectionId = item.href.replace('#', '');
-            const isActive = activeSection === sectionId;
+            const isActive = activeSection === item.href.slice(1);
             return (
               <a
                 key={item.name}
-                href={hrefFor(item.href)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleNavClick(item.href);
-                }}
+                {...destination(item.href)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 ${
-                  isActive
-                    ? 'text-white'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
-                }`}
+                className={cn(
+                  'md-interactive px-4 py-2 text-label-lg rounded-full transition-colors duration-effects ease-effects',
+                  isActive ? 'text-md-on-secondary-container' : 'text-md-on-surface-variant hover:text-md-on-surface',
+                )}
               >
+                {/* MD3 active indicator, carried between destinations on the
+                    expressive spatial spring: a slight overshoot that settles. */}
                 {isActive && (
-                  <motion.div
+                  <motion.span
                     layoutId="activeNavbarIndicator"
-                    className="absolute inset-0 bg-gradient-to-r from-blue-600/80 to-indigo-600/80 rounded-full shadow-md shadow-blue-500/20 border border-blue-400/30"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    className="absolute inset-0 bg-md-secondary-container rounded-full"
+                    transition={INDICATOR}
                   />
                 )}
-                <span className="relative z-10">{item.name}</span>
+                <StateLayer />
+                <span className="relative">{item.name}</span>
               </a>
             );
           })}
         </div>
 
-        {/* Desktop Quick Actions */}
-        <div className="hidden md:flex items-center gap-3">
-          <a
+        {/* Desktop quick actions */}
+        <div className="hidden md:flex items-center gap-1.5">
+          <IconButton
+            icon={Github}
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-slate-400 hover:text-white rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.06] transition-all"
             aria-label="GitHub Profile"
-          >
-            <Github className="w-4 h-4" />
-          </a>
-          <a
-            href={hrefFor('#contact')}
-            onClick={(e) => {
-              e.preventDefault();
-              handleNavClick('#contact');
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs sm:text-sm font-medium rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-500/25 transition-all hover:scale-105"
-          >
-            <span>Let's Talk</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </a>
+          />
+          <Button icon={MessageCircle} {...destination('#contact')}>
+            Let&apos;s Talk
+          </Button>
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden flex items-center gap-2">
+        {/* Mobile menu toggle: the glyph turns into the close mark. */}
+        <div className="md:hidden flex items-center">
           <button
             type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-800/60 border border-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="md-interactive md-shape-morph inline-flex items-center justify-center w-10 h-10 rounded-[20px] active:rounded-xl text-md-on-surface-variant"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <StateLayer />
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={mobileMenuOpen ? 'close' : 'menu'}
+                className="inline-flex"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={spatialWithEffects(motionScheme.standard.spatial.fast, motionScheme.standard.effects.fast)}
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </motion.span>
+            </AnimatePresence>
           </button>
         </div>
       </nav>
 
-      {/* Mobile Drawer Dropdown */}
+      {/* Mobile navigation drawer: grows from the bar, its items following in sequence. */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -15, scale: 0.95 }}
+            id="mobile-navigation"
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="pointer-events-auto absolute top-20 left-4 right-4 max-w-lg mx-auto bg-slate-900/90 backdrop-blur-2xl border border-white/[0.12] rounded-2xl p-5 shadow-2xl shadow-black/80 z-50"
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={spatialWithEffects(motionScheme.standard.spatial.default, motionScheme.standard.effects.fast)}
+            style={{ transformOrigin: 'top center' }}
+            className="pointer-events-auto absolute top-20 left-4 right-4 max-w-lg mx-auto bg-md-surface-container-high border border-md-outline-variant/60 rounded-[28px] p-3 shadow-md-3 z-50"
           >
-            <div className="flex flex-col gap-2">
+            <Reveal immediate stagger={0.04} className="flex flex-col gap-1">
               {navItems.map((item) => {
-                const sectionId = item.href.replace('#', '');
-                const isActive = activeSection === sectionId;
+                const isActive = activeSection === item.href.slice(1);
                 return (
-                  <a
-                    key={item.name}
-                    href={hrefFor(item.href)}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleNavClick(item.href);
-                    }}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                        : 'text-slate-300 hover:text-white hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    <span>{item.name}</span>
-                    {isActive && <Sparkles className="w-4 h-4 text-blue-400" />}
-                  </a>
+                  <RevealItem key={item.name}>
+                    <a
+                      {...destination(item.href)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={cn(
+                        'md-interactive flex items-center px-5 h-14 rounded-full text-label-lg transition-colors duration-effects ease-effects',
+                        isActive
+                          ? 'bg-md-secondary-container text-md-on-secondary-container'
+                          : 'text-md-on-surface-variant',
+                      )}
+                    >
+                      <StateLayer />
+                      <span>{item.name}</span>
+                    </a>
+                  </RevealItem>
                 );
               })}
-              <div className="pt-3 mt-1 border-t border-slate-800 flex items-center justify-between gap-3">
-                <a
-                  href={GITHUB_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800/80 text-slate-300 text-xs font-medium border border-slate-700 w-1/2 justify-center"
-                >
-                  <Github className="w-4 h-4" />
-                  <span>GitHub</span>
-                </a>
-                <a
-                  href={hrefFor('#contact')}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavClick('#contact');
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium w-1/2 justify-center shadow-lg shadow-blue-500/20"
-                >
-                  <span>Contact</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
+              <RevealItem className="pt-3 mt-2 border-t border-md-outline-variant/60 grid grid-cols-2 gap-3">
+                <Button variant="outlined" icon={Github} href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+                  GitHub
+                </Button>
+                <Button icon={MessageCircle} {...destination('#contact')}>
+                  Contact
+                </Button>
+              </RevealItem>
+            </Reveal>
           </motion.div>
         )}
       </AnimatePresence>

@@ -65,6 +65,12 @@ export default defineConfig({
             if (normalized.includes('lucide-react')) {
               return 'vendor-lucide';
             }
+            if (/\/node_modules\/(@material\/web|lit|lit-html|lit-element|@lit)\//.test(normalized)) {
+              return 'vendor-material-web';
+            }
+            if (normalized.includes('/@material/material-color-utilities/')) {
+              return 'vendor-material-color';
+            }
             if (normalized.includes('clsx') || normalized.includes('tailwind-merge')) {
               return 'vendor-utils';
             }

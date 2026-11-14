@@ -1,152 +1,182 @@
-import { FC } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowDown, ArrowRight, Mail, Smartphone, Server, Cpu, Sparkles } from 'lucide-react';
+import { FC, useRef } from 'react';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import type { Variants } from 'framer-motion';
+import { ArrowDown, ArrowRight, Mail, Smartphone, Server, Cpu } from 'lucide-react';
+import { cn } from '../lib/cn';
+import { motionScheme, revealContainer, revealItem } from '../theme/motion';
+import { Button } from './md/Button';
+import { AssistChip } from './md/Chip';
+import { ExpressiveShape } from './md/ExpressiveShape';
+
+/** Each word rises out of its own clipped line box, one after the other. */
+const wordVariants: Variants = {
+  hidden: { y: '110%' },
+  visible: { y: 0, transition: motionScheme.standard.spatial.slow },
+};
+
+/**
+ * Splits a phrase into individually animated words. The words stay plain text
+ * in the heading, separated by real spaces, so what a crawler or a screen
+ * reader gets is exactly the sentence.
+ */
+const RevealWords: FC<{ text: string; className?: string }> = ({ text, className }) => (
+  <>
+    {text.split(' ').map((word, index) => (
+      <span key={`${word}-${index}`}>
+        {index > 0 && ' '}
+        {/* The padding gives descenders room inside the clip; the negative
+            margin takes it back out of the line box. */}
+        <span className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
+          <motion.span variants={wordVariants} className={cn('inline-block', className)}>
+            {word}
+          </motion.span>
+        </span>
+      </span>
+    ))}
+  </>
+);
+
+const DOMAINS = [
+  { icon: Smartphone, label: 'Native Android (Kotlin & Compose)', tone: 'primary', spotlight: 'skill-android' },
+  { icon: Server, label: 'Spring Boot & Cloud Microservices', tone: 'secondary', spotlight: 'skill-backend' },
+  { icon: Cpu, label: 'AI Agents & Modern Tooling', tone: 'tertiary', spotlight: 'skill-ai' },
+] as const;
 
 export const Hero: FC = () => {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.12,
-        delayChildren: 0.15,
-      },
-    },
-  };
+  const sectionRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 24 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.7,
-        ease: [0.22, 1, 0.36, 1],
-      },
-    },
-  };
+  // The decorative shapes drift at a different rate from the page as the hero
+  // scrolls away: depth from parallax, at the cost of one transform.
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end start'] });
+  const nearY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 180]);
+  const farY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 90]);
 
   return (
     <section
+      ref={sectionRef}
       id="hero"
-      className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-hidden pt-28 pb-16"
+      className="relative min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-clip pt-28 pb-16"
     >
-      {/* Background Ambient Glows */}
-      <div className="ambient-glow absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="ambient-glow absolute top-1/3 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="ambient-glow absolute top-1/2 right-1/4 -translate-y-1/2 w-80 h-80 bg-purple-600/12 rounded-full blur-[110px] pointer-events-none" />
-      <div className="ambient-glow absolute bottom-1/4 left-1/3 w-72 h-72 bg-cyan-500/10 rounded-full blur-[90px] pointer-events-none" />
-
-      {/* Grid Overlay with Radial Fade */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
+      {/* MD3 Expressive shapes as the hero's only ornament: tonal, slow, and
+          well away from the copy. */}
+      <motion.div style={{ y: nearY }} className="absolute -top-[18%] -right-[22%] sm:-right-[12%] w-[min(90vw,760px)] text-md-primary-container/35">
+        <ExpressiveShape morph={['cookie9', 'cookie12']} period={20} />
+      </motion.div>
+      <motion.div style={{ y: farY }} className="absolute -bottom-[14%] -left-[24%] sm:-left-[10%] w-[min(60vw,440px)] text-md-tertiary-container/25">
+        <ExpressiveShape morph={['flower', 'soft']} period={24} />
+      </motion.div>
 
       <motion.div
-        variants={containerVariants}
+        variants={revealContainer(0.09, 0.05)}
         initial="hidden"
         animate="visible"
         className="relative z-10 max-w-4xl mx-auto text-center flex flex-col items-center"
       >
-        {/* Availability Badge */}
-        <motion.div variants={itemVariants} className="mb-6">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 shadow-lg shadow-emerald-950/40 backdrop-blur-md">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+        {/* Availability: an assist chip with a live indicator dot */}
+        <motion.div variants={revealItem} className="mb-7">
+          <span className="inline-flex items-center gap-2.5 h-9 px-4 rounded-full text-label-lg bg-md-surface-container-high/80 text-md-on-surface-variant border border-md-outline-variant/60">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-md-success opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-md-success" />
             </span>
             Available for new opportunities
           </span>
         </motion.div>
 
-        {/* Main Heading with Glowing Gradient */}
+        {/* Display headline, word by word */}
         <motion.h1
-          variants={itemVariants}
-          className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-4 leading-tight"
+          variants={revealContainer(0.07)}
+          className="text-display-sm sm:text-display-md lg:text-display-lg text-md-on-surface mb-6 text-balance"
         >
-          Hi, I'm{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 drop-shadow-sm">
-            Jacob Elcharar
+          <RevealWords text="Hi, I'm" />{' '}
+          {/* The name never splits across lines; the greeting wraps instead.
+              On hover it brightens one tone step and a primary rule draws in
+              beneath it on the slow spatial spring: emphasis by typography,
+              not by effects. */}
+          <span className="group/name relative inline-block whitespace-nowrap cursor-default">
+            <RevealWords
+              text="Jacob Elcharar"
+              className="text-md-primary transition-colors duration-medium ease-emphasized group-hover/name:text-md-on-primary-container"
+            />
+            <span
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute inset-x-[0.04em] -bottom-[0.1em] h-[0.06em] min-h-[3px] rounded-full bg-md-primary scale-x-0',
+                // Entering: drawn in from the start of the name on the slow
+                // spatial spring. Leaving: withdrawn quickly on the accelerate
+                // curve. CSS takes the timing of the state being entered, so
+                // each direction keeps its own; a spring run backwards settles
+                // with a visible stutter, which is what the exit used to do.
+                // The origin never changes, so leaving mid-draw cannot jump.
+                'origin-left transition-transform duration-short ease-emphasized-accelerate',
+                'group-hover/name:scale-x-100 group-hover/name:duration-spatial-slow group-hover/name:ease-spatial-slow',
+              )}
+            />
           </span>
         </motion.h1>
 
-        {/* Subtitle */}
+        {/* Roles */}
         <motion.h2
-          variants={itemVariants}
-          className="text-xl sm:text-2xl md:text-3xl font-semibold text-slate-300 mb-6 flex items-center justify-center gap-2 flex-wrap"
+          variants={revealItem}
+          className="text-headline-sm sm:text-headline-md text-md-on-surface mb-6 flex items-center justify-center gap-x-3 gap-y-1 flex-wrap"
         >
           <span>Android Software Engineer</span>
-          <span className="text-indigo-400 hidden sm:inline">•</span>
-          <span className="text-slate-400 font-normal">Fullstack Developer</span>
+          <span className="text-md-tertiary hidden sm:inline" aria-hidden="true">
+            •
+          </span>
+          <span className="text-md-on-surface-variant">Fullstack Developer</span>
         </motion.h2>
 
-        {/* Pitch / Bio */}
+        {/* Pitch */}
         <motion.p
-          variants={itemVariants}
-          className="max-w-2xl text-base sm:text-lg md:text-xl text-slate-400 leading-relaxed mb-8"
+          variants={revealItem}
+          className="max-w-2xl text-body-lg sm:text-lg text-md-on-surface-variant mb-9 text-pretty"
         >
           Over 3 years of experience building native applications end-to-end. Specialized in modern Android engineering with Kotlin, Jetpack Compose, Clean Architecture, and MVVM, complemented by scalable Spring Boot backend solutions and AI-driven workflows.
         </motion.p>
 
-        {/* Tech Domain Pills */}
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-wrap justify-center gap-3 mb-10 text-xs sm:text-sm font-medium text-slate-300"
+        {/* Domains */}
+        <motion.ul
+          variants={revealContainer(0.05)}
+          className="flex flex-wrap justify-center gap-2.5 mb-10"
+          aria-label="Focus areas"
         >
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/60 border border-white/[0.08] hover:border-blue-500/40 hover:bg-slate-900/80 transition-all duration-300 backdrop-blur-md shadow-sm">
-            <Smartphone className="w-4 h-4 text-blue-400" />
-            <span>Native Android (Kotlin &amp; Compose)</span>
-          </div>
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/60 border border-white/[0.08] hover:border-indigo-500/40 hover:bg-slate-900/80 transition-all duration-300 backdrop-blur-md shadow-sm">
-            <Server className="w-4 h-4 text-indigo-400" />
-            <span>Spring Boot &amp; Cloud Microservices</span>
-          </div>
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/60 border border-white/[0.08] hover:border-purple-500/40 hover:bg-slate-900/80 transition-all duration-300 backdrop-blur-md shadow-sm">
-            <Cpu className="w-4 h-4 text-purple-400" />
-            <span>AI Agents &amp; Modern Tooling</span>
-          </div>
+          {DOMAINS.map(({ icon, label, tone, spotlight }) => (
+            <motion.li key={label} variants={revealItem}>
+              <AssistChip icon={icon} tone={tone} sectionId="skills" spotlightId={spotlight}>
+                {label}
+              </AssistChip>
+            </motion.li>
+          ))}
+        </motion.ul>
+
+        {/* Calls to action: filled + outlined */}
+        <motion.div
+          variants={revealItem}
+          className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto mb-16"
+        >
+          <Button size="lg" href="#projects" trailingIcon={ArrowRight}>
+            Explore Projects
+          </Button>
+          <Button size="lg" variant="outlined" href="#contact" icon={Mail}>
+            Get In Touch
+          </Button>
         </motion.div>
 
-        {/* CTA Buttons */}
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-16"
-        >
-          <a
-            href="#projects"
-            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
-          >
-            <span>Explore Projects</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
-
-          <a
-            href="#contact"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-slate-900/70 hover:bg-slate-800/80 text-slate-200 font-semibold border border-white/[0.12] hover:border-white/[0.2] hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 backdrop-blur-md"
-          >
-            <Mail className="w-4 h-4 text-slate-400" />
-            <span>Get In Touch</span>
-          </a>
-        </motion.div>
-
-        {/* Scroll Indicator.
-            The reveal and the bobbing loop live on separate elements: an explicit
-            `animate` object on a variant child overrides the inherited variant,
-            which would leave this stuck at the `hidden` opacity of 0. */}
-        <motion.div variants={itemVariants}>
+        {/* Scroll cue. The reveal and the bobbing loop live on separate
+            elements: an explicit `animate` object on a variant child overrides
+            the inherited variant, which would leave it stuck at opacity 0. */}
+        <motion.div variants={revealItem}>
           <motion.a
             href="#skills"
             animate={{ y: [0, 8, 0] }}
-            transition={{
-              duration: 2.2,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-            className="inline-flex flex-col items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-300 transition-colors duration-200 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70"
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            className="md-interactive inline-flex flex-col items-center gap-1.5 px-3 py-1 text-md-on-surface-variant hover:text-md-primary transition-colors duration-effects ease-effects rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-md-secondary"
             aria-label="Scroll to Skills"
           >
-            <span className="tracking-widest uppercase text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-400" /> Explore Skills
-            </span>
-            <ArrowDown className="w-4 h-4 text-indigo-400" />
+            <span className="tracking-widest uppercase text-label-sm">Explore Skills</span>
+            <ArrowDown className="w-4 h-4" aria-hidden="true" />
           </motion.a>
         </motion.div>
       </motion.div>

@@ -1,13 +1,25 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
-import { Smartphone, Server, CheckCircle2, Sparkles, Layers, Cpu } from 'lucide-react';
+import { Smartphone, Server, Check, Sparkles, Layers, Cpu } from 'lucide-react';
+import { cn } from '../lib/cn';
+import { HOVER_LIFT, HOVER_LIFT_TRANSITION, revealContainer, revealItem } from '../theme/motion';
+import { TONE_CLASS } from '../theme/tone';
+import type { Tone } from '../theme/tone';
+import { Reveal, RevealItem } from './md/Reveal';
+import { SectionHeader } from './md/SectionHeader';
 
 interface SkillCategory {
+  /** Lets the hero's focus-area chips spotlight this card when they lead here. */
+  id: string;
   title: string;
   subtitle: string;
   icon: typeof Smartphone;
-  iconBg: string;
-  accentGradient: string;
+  /** The accent role the card is washed with on hover, and its marks take. */
+  tone: Tone;
+  /** Tonal container + on-colour pair for the icon tile. */
+  iconTone: string;
+  /** Colour of the bullet in the impact list. */
+  dotTone: string;
   skills: string[];
   description: string;
   highlights: string[];
@@ -15,11 +27,13 @@ interface SkillCategory {
 
 const skillCategories: SkillCategory[] = [
   {
+    id: 'skill-android',
     title: 'Android Development',
     subtitle: 'Native Mobile Engineering',
     icon: Smartphone,
-    iconBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
-    accentGradient: 'from-emerald-500 via-teal-500 to-cyan-500',
+    tone: 'primary',
+    iconTone: 'bg-md-primary-container text-md-on-primary-container',
+    dotTone: 'bg-md-primary',
     skills: [
       'Kotlin & Java',
       'Jetpack Compose',
@@ -35,11 +49,13 @@ const skillCategories: SkillCategory[] = [
     highlights: ['Production Play Store Deployments', 'Custom Touch & Gesture Handling', 'Scoped Storage & Media APIs'],
   },
   {
+    id: 'skill-backend',
     title: 'Backend & Cloud Systems',
     subtitle: 'Scalable Services & Microservices',
     icon: Server,
-    iconBg: 'bg-blue-500/10 text-blue-400 border-blue-500/25',
-    accentGradient: 'from-blue-500 via-indigo-500 to-purple-500',
+    tone: 'secondary',
+    iconTone: 'bg-md-secondary-container text-md-on-secondary-container',
+    dotTone: 'bg-md-secondary',
     skills: [
       'Java & Spring Boot',
       'PostgreSQL & SQL',
@@ -55,11 +71,13 @@ const skillCategories: SkillCategory[] = [
     highlights: ['Enterprise Messaging Integration', 'Normalized Schema Optimization', 'Server-Side Rendering & Caching'],
   },
   {
+    id: 'skill-ai',
     title: 'AI Workflows & Dev Tools',
     subtitle: 'Next-Gen Engineering',
     icon: Cpu,
-    iconBg: 'bg-purple-500/10 text-purple-400 border-purple-500/25',
-    accentGradient: 'from-purple-500 via-pink-500 to-rose-500',
+    tone: 'tertiary',
+    iconTone: 'bg-md-tertiary-container text-md-on-tertiary-container',
+    dotTone: 'bg-md-tertiary',
     skills: [
       'AI Agents & MCP',
       'Antigravity & Claude Workflows',
@@ -78,128 +96,100 @@ const skillCategories: SkillCategory[] = [
 
 export const Skills: FC = () => {
   return (
-    <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-      {/* Background Subtle Mesh Glow */}
-      <div className="ambient-glow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[20rem] bg-indigo-900/10 rounded-full blur-[140px] pointer-events-none" />
+    <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-clip">
+      <SectionHeader
+        icon={Sparkles}
+        eyebrow="Core Capabilities"
+        title="Technical Mastery & Stack"
+        lead="A comprehensive breakdown of my engineering skill set across native Android mobile development, scalable backend systems, and next-generation AI workflows."
+      />
 
-      {/* Header */}
-      <div className="relative z-10 text-center space-y-4 mb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase bg-slate-900/80 text-indigo-300 border border-indigo-500/30 backdrop-blur-md shadow-sm"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Core Capabilities</span>
-        </motion.div>
-
-        <motion.h2
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white"
-        >
-          Technical Mastery &amp; Stack
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed"
-        >
-          A comprehensive breakdown of my engineering skill set across native Android mobile development, scalable backend systems, and next-generation AI workflows.
-        </motion.p>
-      </div>
-
-      {/* Grid of 3 Glassmorphic Cards */}
       {/* Each card spans three parent rows and mirrors them with subgrid, so the
           header, body and technologies bands line up across the row no matter
           how the copy wraps at a given width. */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 grid-rows-[repeat(9,auto)] md:grid-rows-[repeat(6,auto)] lg:grid-rows-[repeat(3,auto)]">
-        {skillCategories.map((category, idx) => {
+      <Reveal
+        stagger={0.12}
+        className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 grid-rows-[repeat(9,auto)] md:grid-rows-[repeat(6,auto)] lg:grid-rows-[repeat(3,auto)]"
+      >
+        {skillCategories.map((category) => {
           const Icon = category.icon;
           return (
-            <motion.div
+            <RevealItem
               key={category.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.6, delay: idx * 0.15 }}
-              className="group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl border border-white/[0.08] hover:border-white/[0.2] bg-slate-900/50 hover:bg-slate-900/75 p-7 sm:p-8 shadow-xl shadow-black/40 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 hover:-translate-y-2 backdrop-blur-xl overflow-hidden"
+              id={category.id}
+              whileHover={HOVER_LIFT}
+              transition={HOVER_LIFT_TRANSITION}
+              className={cn(
+                'md-tonal md-shape-morph group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl p-6 sm:p-7 border',
+                'hover:shadow-md-2 [--md-tone-hover:7%]',
+                TONE_CLASS[category.tone],
+              )}
             >
-              {/* Top Gradient Highlight Line */}
-              <div
-                className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${category.accentGradient} opacity-75 group-hover:opacity-100 transition-opacity duration-300`}
-              />
-
-              {/* Band 1 — identity */}
+              {/* Band 1 — identity. The icon tile morphs toward a circle while
+                  the card is hovered. */}
               <div className="flex items-start gap-4 mb-6">
                 <div
-                  className={`p-3.5 rounded-2xl border ${category.iconBg} shadow-inner group-hover:scale-110 transition-transform duration-300 shrink-0`}
+                  className={`md-shape-morph p-3.5 rounded-2xl group-hover:rounded-[28px] ${category.iconTone} shrink-0`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-6 h-6" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
-                    {category.title}
-                  </h3>
-                  <p className="text-xs font-medium text-slate-400 mt-0.5">{category.subtitle}</p>
+                  <h3 className="text-title-lg text-md-on-surface">{category.title}</h3>
+                  <p className="text-label-md text-md-on-surface-variant mt-1">{category.subtitle}</p>
                 </div>
               </div>
 
               {/* Band 2 — what it means in practice */}
               <div className="pb-6">
-                <p className="text-sm text-slate-300/90 mb-5 leading-relaxed">
-                  {category.description}
-                </p>
+                <p className="text-body-md text-md-on-surface-variant mb-5">{category.description}</p>
 
-                {/* Proof points for this discipline */}
-                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
+                  <Sparkles className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                   <span>Selected Impact</span>
                 </div>
                 <ul className="space-y-2">
                   {category.highlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="flex items-start gap-2.5 text-[13px] leading-snug text-slate-300/90"
-                    >
-                      <span
-                        className={`mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r ${category.accentGradient}`}
-                      />
+                    <li key={highlight} className="flex items-start gap-2.5 text-body-md text-md-on-surface">
+                      <span className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${category.dotTone}`} />
                       <span>{highlight}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Band 3 — the stack */}
-              <div className="pt-4 border-t border-white/[0.06]">
-                <div className="flex items-center gap-2 mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              {/* Band 3 — the stack. The chips arrive in sequence once the card
+                  itself has landed. */}
+              <div className="pt-4 border-t border-md-outline-variant/60">
+                <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
+                  <Layers className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                   <span>Key Technologies</span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <motion.ul variants={revealContainer(0.03, 0.15)} className="flex flex-wrap gap-2">
                   {category.skills.map((skill) => (
-                    <span
+                    <motion.li
                       key={skill}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/[0.08] hover:border-white/[0.18] transition-colors"
+                      variants={revealItem}
+                      // Inherits the card's tone. A light wash at rest keeps the
+                      // chips distinct from the card; when the card is hovered
+                      // (and the card itself washes toward the tone) they step up
+                      // with it rather than dissolving into it.
+                      className={cn(
+                        'md-tonal md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md text-md-on-surface border cursor-default',
+                        '[--md-tonal-base:var(--md-sys-color-surface-container-high)]',
+                        '[--md-tone-rest:8%] [--md-tone-rest-border:18%] [--md-tone-hover:26%]',
+                        'group-hover:[--md-tone-rest:16%] group-hover:[--md-tone-rest-border:34%]',
+                      )}
                     >
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400/80 group-hover:text-emerald-400 transition-colors" />
+                      <Check className="w-3.5 h-3.5 text-tone" aria-hidden="true" />
                       {skill}
-                    </span>
+                    </motion.li>
                   ))}
-                </div>
+                </motion.ul>
               </div>
-            </motion.div>
+            </RevealItem>
           );
         })}
-      </div>
+      </Reveal>
     </section>
   );
 };

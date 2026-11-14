@@ -49,7 +49,7 @@ export const RichText: FC<{ children: string }> = ({ children }) => {
           return (
             <code
               key={idx}
-              className="font-mono text-[0.85em] text-blue-300 bg-blue-500/[0.08] border border-blue-500/20 rounded-md px-1.5 py-0.5 whitespace-nowrap"
+              className="font-mono text-[0.85em] text-md-on-primary-container bg-md-primary-container/60 rounded-md px-1.5 py-0.5 whitespace-nowrap"
             >
               {part.slice(1, -1)}
             </code>
@@ -57,7 +57,7 @@ export const RichText: FC<{ children: string }> = ({ children }) => {
         }
 
         return (
-          <em key={idx} className="italic text-slate-200">
+          <em key={idx} className="italic text-md-on-surface">
             {part.slice(1, -1)}
           </em>
         );

@@ -6,13 +6,26 @@
   html {
     scroll-behavior: smooth;
     color-scheme: dark;
+    /* Keep the scrollbar's lane even while the lightbox locks scrolling.
+       Without it, hiding the overflow removes the bar, the layout widens by its
+       width, and the whole page jumps sideways the moment a screenshot opens. */
+    scrollbar-gutter: stable;
   }
 
+  /* Every colour below is a role from the generated scheme (see
+     src/theme/color.ts), not a fixed value. */
   body {
-    background-color: #030712;
-    color: #f1f5f9;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font-family: theme('fontFamily.sans');
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
   }
 
 
@@ -61,52 +74,133 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #030712;
+    background: var(--md-sys-color-surface);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--md-sys-color-outline-variant);
     border-radius: 9999px;
-    border: 2px solid #030712;
+    border: 2px solid var(--md-sys-color-surface);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--md-sys-color-outline);
   }
 }
 
 @layer components {
-  /* Glassmorphic panel */
-  .glass-panel {
-    background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+  /*
+   * Host for <StateLayer />: the `@material/web` ripple and focus ring position
+   * themselves against it. No `overflow: hidden` here: the ripple clips itself
+   * to the host's radius, and clipping the host would also clip the focus
+   * ring, which is drawn just outside the bounds.
+   */
+  .md-interactive {
+    position: relative;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  /* Glassmorphic interactive card */
-  .glass-card {
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* MD3 state layers take the colour of the content they sit on: on-primary on
+     a filled button, primary on a text button, and so on. */
+  md-ripple {
+    --md-ripple-hover-color: currentColor;
+    --md-ripple-pressed-color: currentColor;
   }
 
-  .glass-card:hover {
-    border-color: rgba(255, 255, 255, 0.18);
-    background: rgba(30, 41, 59, 0.6);
-    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 20px -2px rgba(99, 102, 241, 0.15);
+  /* Until the elements upgrade they are unknown inline tags; keep them out of
+     the layout so the prerendered page does not shift when they do. */
+  md-ripple:not(:defined),
+  md-focus-ring:not(:defined) {
+    display: none;
   }
 
-  /* Glass pill badge */
-  .glass-pill {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  /*
+   * Shape and elevation changes on interactive surfaces. The corner moves on
+   * the fast spatial spring (a CSS `linear()` easing sampled from the same
+   * token Framer Motion uses), colour and shadow on the effects spring.
+   */
+  .md-shape-morph {
+    transition:
+      border-radius theme('transitionDuration.spatial-fast') theme('transitionTimingFunction.spatial-fast'),
+      box-shadow theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      background-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      border-color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      color theme('transitionDuration.effects') theme('transitionTimingFunction.effects'),
+      opacity theme('transitionDuration.effects') theme('transitionTimingFunction.effects');
   }
 
+  /*
+   * Tonal surfaces: a surface container washed with one accent role.
+   *
+   * `--md-tone` names the role (set it with a `tone-*` utility, or leave it to
+   * inherit from an ancestor, so chips inside a card take the card's tone).
+   * `--md-tone-rest` and `--md-tone-hover` say how much of it shows; hover
+   * and keyboard focus deepen the wash and draw the outline toward the tone.
+   * Everything resolves through the scheme variables, so a project's own
+   * scheme re-tints these with no extra classes.
+   */
+  .md-tonal {
+    --md-tonal-tone: var(--md-tone, var(--md-sys-color-primary));
+    --md-tonal-border: color-mix(in srgb, var(--md-sys-color-outline-variant) 60%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-rest, 0%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) var(--md-tone-rest-border, 0%), var(--md-tonal-border));
+  }
+
+  .md-tonal:focus-within {
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-hover, 10%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) 40%, var(--md-tonal-border));
+  }
+
+  /* Only where hover is real: on a touch screen `:hover` sticks to whatever
+     was tapped last, which would leave a card tinted after scrolling past it. */
+  @media (hover: hover) {
+    .md-tonal:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--md-tonal-tone) var(--md-tone-hover, 10%),
+        var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+      );
+      border-color: color-mix(in srgb, var(--md-tonal-tone) 40%, var(--md-tonal-border));
+    }
+  }
+
+  /*
+   * A brief spotlight, set and cleared by `scrollToSection`: the surface takes
+   * its hover wash and a toned outline, settles in on the decelerate curve,
+   * then eases back over a full second. Colour only; nothing moves.
+   */
+  .md-tonal.is-spotlit {
+    background-color: color-mix(
+      in srgb,
+      var(--md-tonal-tone) var(--md-tone-hover, 10%),
+      var(--md-tonal-base, var(--md-sys-color-surface-container-low))
+    );
+    border-color: color-mix(in srgb, var(--md-tonal-tone) 55%, var(--md-tonal-border));
+    transition-duration: 450ms;
+    transition-timing-function: cubic-bezier(0.05, 0.7, 0.1, 1);
+  }
+
+  .md-tonal.is-spotlit-out {
+    transition-duration: 1000ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* On a tonal surface the wash is the hover state, so the ripple keeps only
+     its press, in the surface's tone. Direct children only: a chip or button
+     nested inside the surface keeps its own full state layer. */
+  .md-tonal > md-ripple {
+    --md-ripple-hover-opacity: 0;
+    --md-ripple-pressed-color: var(--md-tonal-tone);
+  }
 
   /* Scrollbar for surfaces that sit above the page, such as the project modal.
      The global thumb is bordered in the page background, which reads as a hard
@@ -120,27 +214,57 @@
   }
 
   .modal-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--md-sys-color-outline-variant);
     border-radius: 9999px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
 
   .modal-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.28);
+    background: var(--md-sys-color-outline);
     background-clip: content-box;
   }
 
   /* Firefox has no ::-webkit-scrollbar; these are the equivalent knobs. */
   .modal-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  }
+}
+
+@layer utilities {
+  /* Which accent role a tonal surface (and its icon) takes. */
+  .tone-primary {
+    --md-tone: var(--md-sys-color-primary);
+    --md-on-tone: var(--md-sys-color-on-primary);
   }
 
-  /* Glowing gradient texts */
-  .text-glow-gradient {
-    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .tone-secondary {
+    --md-tone: var(--md-sys-color-secondary);
+    --md-on-tone: var(--md-sys-color-on-secondary);
+  }
+
+  .tone-tertiary {
+    --md-tone: var(--md-sys-color-tertiary);
+    --md-on-tone: var(--md-sys-color-on-tertiary);
+  }
+
+  /* The role itself, for an icon that should match its surface. */
+  .text-tone {
+    color: var(--md-tone, var(--md-sys-color-primary));
+  }
+
+  /* Content drawn on the role, e.g. an icon inside a filled tone badge. */
+  .text-on-tone {
+    color: var(--md-on-tone, var(--md-sys-color-on-primary));
+  }
+
+  .bg-tone {
+    background-color: var(--md-tone, var(--md-sys-color-primary));
+  }
+
+  /* A soft container of the role, for an icon badge at rest. */
+  .bg-tone-soft {
+    background-color: color-mix(in srgb, var(--md-tone, var(--md-sys-color-primary)) 18%, transparent);
   }
 }

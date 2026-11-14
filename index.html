@@ -12,8 +12,12 @@
     <meta name="author" content="Jacob Elcharar" />
     <link rel="canonical" href="https://jacobelcharar.dev/" />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#030712" />
+    <!-- The SVG is drawn for a 16px tab and wins where it is supported; the
+         PNGs (rendered from it by `npm run brand`) cover the rest. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#111318" />
     <meta name="color-scheme" content="dark" />
 
     <!--
@@ -83,7 +87,7 @@
       }
     </script>
   </head>
-  <body class="bg-[#030712] text-slate-100 font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200 min-h-screen overflow-x-hidden">
+  <body class="bg-md-surface text-md-on-surface font-sans antialiased min-h-screen overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -26,6 +26,12 @@ export interface Project {
   demo?: string;
   isPrivate?: boolean;
   icon: typeof Folder;
+  /**
+   * Seed for the project's Material You scheme (see `src/theme/color.ts`). The
+   * card borrows its accent roles and the case study takes the whole scheme,
+   * so each project reads as its own product without leaving the design system.
+   */
+  seed: string;
 }
 
 /**
@@ -41,35 +47,51 @@ export const projects: Project[] = [
     // Mirrors the private repo Minim4You-waba-wix. Private projects carry no
     // `github` URL, so the name is noted here rather than derived from one.
     id: 'minim4you-waba-wix',
-    title: 'Minim4You Backend',
+    title: 'Minim4You WhatsApp Commerce',
     category: 'Backend',
-    categoryLabel: 'Automated E-Commerce & WABA',
+    categoryLabel: 'Seasonal WhatsApp Commerce Platform',
     description:
-      'Architected and deployed a backend service to automate end-to-end retail ordering and invoicing workflows. Transitioned messaging infrastructure to the official Meta WABA for enterprise reliability.',
+      'A WhatsApp shopping bot, operator console and broadcast engine for a Four Species retailer, in production every season from Rosh Hashanah to Sukkot. Customers browse, fill a cart and pay entirely inside WhatsApp, on the official Meta Business API, against the store\'s Wix catalogue.',
     detailedContent: {
       overview: [
-        'Minim4You required a **highly reliable backend** to sync a customer-facing Wix interface with real-time WhatsApp business messaging. This system acts as the **central nervous system for retail ordering and invoicing**.',
-        'The problem it solves is a gap in day-to-day operations: orders arrived in one system, the business actually talked to its customers in another, and **invoicing was manual work sitting in between**. The service closes that gap — when an order is placed it records the order, generates the invoice, and routes the confirmation to the customer over WhatsApp **without anyone re-typing an order number**.',
-        'A significant piece of the work was **migrating messaging onto the official Meta WhatsApp Business API**. Unofficial integrations are convenient right up until the account is restricted; moving to WABA meant business verification, phone-number registration and getting message templates approved, and in return the service gained real delivery receipts, documented rate limits, and an integration that **cannot be revoked without notice**. That trade is what took the system from a working prototype to something a business can depend on.',
-        'Integrating two third-party platforms also means **inheriting their failure modes**. Webhooks arrive out of order, get retried, and are delivered more than once, while rate limits and transient outages are routine — and none of it may produce a duplicate invoice or a lost order. Every inbound event is therefore treated as **untrusted and repeatable**: handlers record the provider event ID before acting and short-circuit on a repeat (**idempotency**), and outbound calls **retry with backoff** so a temporary API failure delays a message instead of dropping it.',
-        '**Order state is never reconstructed from the messaging thread.** `PostgreSQL` holds the canonical record and every transition is written inside a transaction, so a crash mid-flow resumes from a known state rather than from whatever the last WhatsApp message happened to say.',
+        'Minim4You sells the **Four Species for Sukkot**. It is a business that does almost all of its year in a few weeks, and its customers would rather send a WhatsApp message than open a website. This system lets them **shop without leaving the chat**. It runs **in production for the season**, from Rosh Hashanah to Sukkot, and is shut down for the rest of the year. It is a `Spring Boot` service on Heroku that sits between the **official Meta WhatsApp Business API** and the store\'s **Wix** catalogue, carts, orders and CRM.',
+        '**The bot is a full storefront in a chat thread.** A customer moves through onboarding, categories, products, variant options, quantity, cart editing and checkout using WhatsApp\'s own interactive lists, buttons and product cards. The cart is a real `Wix eCommerce` cart, so stock, pricing and discounts come from the store and are never copied. Payment happens on a **signed, expiring checkout link**. Each tap on it mints a fresh Wix redirect session, because a Wix session URL only opens once and link-preview crawlers would otherwise use it up before a person ever taps. When Wix reports that an order was approved or shipped, a signed webhook turns that into an **approved WhatsApp template message** to the customer.',
+        '**Most of the engineering is about what goes wrong.** Meta delivers each message as its own webhook, retries freely and sends the same one more than once. Messages are therefore **deduplicated by WhatsApp message ID**, both in memory and against the database, and **handled one sender at a time** under a per-sender lock. Two quick taps can\'t race each other through the conversation state, and a retry can\'t get a second answer. Both webhooks are **cryptographically verified**: an `HMAC-SHA256` signature from Meta and an RSA-signed JWT from Wix. Bot sessions live in `PostgreSQL` rather than in memory, so a dyno restart in the middle of an order continues from a known state.',
+        'Next to the bot sits a **real-time operator console** for the people who answer customers: a self-contained, mobile-first page with no build step, protected by authentication. Operators get a live queue with search and a "waiting for a reply" view, their own colour-coded tags, and real **sent, delivered and read receipts** taken from Meta\'s status webhooks. They also see a countdown of WhatsApp\'s **24-hour customer-service window**, and once it closes, a one-click approved template to reopen it. When an operator replies, **the bot pauses automatically** for that conversation, so a customer never gets a human answer and an automated one at the same moment. The pause always expires, so a conversation nobody hands back returns to the bot on its own. The console can also pull **the customer\'s Wix orders on demand**. It asks Wix only when an operator requests it, never just because a thread was opened.',
+        'The third part is a **broadcast engine** for the season\'s marketing. It builds audiences from bot sessions, Wix orders, Wix contact labels or a pasted list, and shows exactly how many people each exclusion removed. Anyone who asked to unsubscribe is **always excluded, with no override**, and if the opt-out list can\'t be read, the campaign isn\'t created at all. Campaigns are paced under Meta\'s rate limits and can be paused, resumed and retried. Afterwards, everyone a campaign actually reached can be **tagged back into the Wix CRM**. That step is idempotent, and it matches phone numbers in all the formats Wix stores them in, so it never creates a duplicate contact.',
+        'The codebase is roughly **20k lines of Java plus 12k lines of tests**, with **hundreds of automated tests**. The tests go beyond the Java: they also check that every URL the dashboards call is a route the server actually maps, so a broken endpoint fails the build instead of reaching an operator.',
       ],
       architecture: [
-        'Java Spring Boot microservice deployed on Heroku',
-        'Meta WhatsApp Business API (WABA) for official, reliable messaging',
-        'Wix REST APIs to synchronize CRM customer records and inventory',
-        'PostgreSQL database for transactional integrity',
+        'Java 17 / Spring Boot 3 service on Heroku, with Heroku Postgres (Spring Data JPA)',
+        'Meta WhatsApp Cloud API: interactive lists, buttons, product and CTA messages, approved templates and delivery-status webhooks',
+        'Wix REST, eCommerce and CRM APIs for the catalogue, carts, checkout, orders, contacts and labels, plus signed Wix webhooks',
+        'Webhook security: HMAC-SHA256 (Meta) and RS256 JWT (Wix) verification, with HMAC-signed, expiring checkout tokens',
+        'Concurrency: per-sender locking, deduplication by message ID, and a token-bucket rate limiter for Wix calls',
+        'Operator and campaign consoles as dependency-free, single-file HTML/JS pages served by the service',
       ],
       features: [
-        'Real-time order synchronization from web to WhatsApp',
-        'Automated invoice generation and PDF routing',
-        'Fault-tolerant webhook processors for message delivery receipts',
+        'End-to-end ordering inside WhatsApp, from browsing and variants to the cart and a secure payment link',
+        'Automatic order-status notifications to customers from Wix order webhooks',
+        'Live operator inbox with delivery receipts, tags, search and a 24-hour-window countdown',
+        'Automatic human handover that pauses the bot while an operator is on the thread',
+        'Template broadcast campaigns with audience building, opt-out enforcement, pacing and retry',
+        'Tagging of campaign recipients back into the Wix CRM, without duplicate contacts',
       ],
-      screenshots: [],
+      screenshots: [
+        { src: '/screenshots/minim4you/conversation_queue.png', caption: 'Operator console: live conversation queue' },
+        { src: '/screenshots/minim4you/bot_order_flow.png', caption: 'Bot ordering flow with interactive buttons and lists' },
+        { src: '/screenshots/minim4you/human_handover.png', caption: 'Operator reply with the bot paused automatically' },
+        { src: '/screenshots/minim4you/customer_context.png', caption: 'Customer orders pulled live from Wix' },
+        { src: '/screenshots/minim4you/broadcast_campaigns.png', caption: 'Broadcast campaigns' },
+        { src: '/screenshots/minim4you/campaign_progress.png', caption: 'Campaign progress and delivery receipts' },
+        { src: '/screenshots/minim4you/campaign_template.png', caption: 'New campaign: approved template and preview' },
+        { src: '/screenshots/minim4you/conversation_queue_dark.png', caption: 'Operator console in dark mode' },
+      ],
     },
-    tags: ['Spring Boot', 'PostgreSQL', 'Meta WABA', 'Wix APIs', 'Heroku'],
+    tags: ['Spring Boot', 'PostgreSQL', 'WhatsApp Cloud API', 'Wix APIs', 'Heroku'],
     isPrivate: true,
     icon: Server,
+    seed: '#2e7d32',
   },
   {
     id: 'taskflow',
@@ -117,41 +139,47 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/TaskFlow',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#6750a4',
   },
   {
-    // Mirrors the private repo gio-manetti.
-    id: 'gio-manetti',
-    title: 'GIO MANETTI E-Commerce',
+    // Mirrors the private repo fashion-commerce-platform.
+    id: 'fashion-commerce-platform',
+    title: 'Fashion Commerce Platform',
     category: 'Fullstack',
-    categoryLabel: 'Fullstack E-Commerce Platform',
+    categoryLabel: 'White-Label E-Commerce Platform',
     description:
-      'Architected the system design, data modeling schemas, and AI agent execution plans for a comprehensive full-stack platform leveraging Next.js, Spring Boot, PostgreSQL, and Headless CMS integrations.',
+      'A white-label e-commerce platform for established fashion houses: one shared codebase, one deployment per brand, each dressed through a brand pack rather than a fork. Israel-first, with Hebrew and RTL, shekel pricing and VAT, on Medusa 2.0, a GraphQL BFF and PostgreSQL. In active development.',
     detailedContent: {
       overview: [
-        'GIO MANETTI represents a modern, **luxury e-commerce platform built to handle scale**. This project involved designing the entire data schema from scratch and executing a full-stack implementation plan driven by **AI agent workflows**.',
-        '**Luxury retail puts contradictory pressure on a storefront.** Pages must be fast and indexable, which pushes work to the server; merchandising copy changes constantly, which pushes content out of the codebase; and inventory and payment must stay strictly consistent, which pushes transactions into a system that will not lose a write. Each concern was therefore given the tier that actually suits it rather than forcing one stack to do everything.',
-        'My work centred on **the design layer** rather than pixel-pushing. That meant modelling the entire schema from scratch — products, variants, media, stock, orders and customers as separate **normalised entities** with the relationships enforced by real constraints. **A product is not a row:** a single size can sell out without affecting its siblings, price history stays attached to the variant that carried it, and merchandising can reorder a collection without a data migration.',
-        'Between the storefront and the services sits a **GraphQL / BFF** layer that composes **one response per view**, which collapses page-load waterfalls into a single round trip and insulates the frontend from backend decomposition. Behind it, `Spring Boot` owns money and stock: checkout runs inside **managed transactions** so stock reservation, order creation and payment state move together or not at all — preventing the failure modes that actually matter in retail, like double-selling the last unit or recording an order without payment.',
-        'The implementation itself was executed through **structured AI agent workflows**. Each subsystem was specified as an explicit execution plan — data contracts, endpoint shapes, edge cases, definition of done — **before any code was generated**, so the output could be reviewed against a written specification rather than against intuition. That is what kept a fast build from turning into an inconsistent one.',
+        'Fashion Commerce Platform is an e-commerce platform for **established fashion houses**, multi-generational businesses with decades of trading behind them rather than startups. It is built once and **deployed once per brand**. Every house runs its own single-tenant installation from the same shared code, and nothing in that code belongs to any one of them. It is ultra-premium by design and **Israel-first**: Hebrew and right-to-left, prices in shekels with VAT included, and local payment and delivery providers.',
+        '**A brand is data, never a fork.** Each deployment receives its brand as a **brand pack**: a palette and typefaces, a name, logo and metadata, copy in the message catalogues, and its own catalogue of products. Shared code may not contain a brand literal of any kind, so changing a brand by editing shared files counts as a fork and is not allowed. The design system enforces this mechanically. Components use only **role-named colour tokens** (`surface`, `ink`, `accent`) that map onto whichever palette is active, a lint rule rejects literal and palette-named colours in class names, and a **contrast gate in CI** checks every text colour against every surface in every theme at WCAG AA before a palette can ship. The platform carries its own default luxury theme of obsidian, charcoal and gold, which a brand pack replaces.',
+        'The storefront never talks to the commerce engine, the CMS or search directly. Every read goes through a **GraphQL BFF** built on `GraphQL Yoga`, so caching, currency, locale and authorisation are enforced in one place. Behind it, `Medusa 2.0` on `PostgreSQL` and `Redis` is the order and inventory system, with `Sanity` for editorial content, `Algolia` for search and a `Next.js 15` storefront to follow in later phases. The BFF already serves products, product lists, collections and navigation. It validates both its own arguments and Medusa\'s responses with `Zod`, refuses to show a price that is not VAT-inclusive, and requires alt text on every image. Its unit tests cover **100% of statements and branches**, and an integration suite of more than 50 tests runs it against a real Medusa and Postgres.',
+        '**Money is never a float.** Prices are integer agorot from end to end, held in a dedicated money package, with banker\'s rounding only at display time and `BigInt` taking over where a calculation would leave the safe-integer range. Medusa stores prices as decimals, so the single conversion between the two works on the decimal digits rather than on arithmetic, and it **refuses rather than guesses**: a fraction of an agora, an exponent form or a foreign currency throws instead of producing a plausible wrong number. The VAT rate is configuration with no default anywhere. Stock reservations are **safe against overselling across processes**: with Medusa\'s default in-memory lock, four separate processes racing for the last unit all got it, and with the lock moved to Redis exactly one wins. A race test checks that on every round.',
+        'Observability arrived before the storefront. `OpenTelemetry` traces follow a request from the BFF through Medusa into Postgres, and **a redacting exporter strips secrets before any span leaves the process**: request headers, publishable keys and SQL literals, each of which turned up in a real trace. `Sentry` reports errors from both services. The AWS platform (VPC, ECS Fargate, Aurora Serverless v2, ElastiCache, S3 and Secrets Manager) is written and validated in `Terraform` but deliberately not applied yet, so development runs on a zero-cost local stack with Cloudflare R2 for uploaded media. CI runs formatting, lint, type checks, tests, a dependency audit and `Semgrep` security scanning on every pull request, and the same suites run locally in Linux containers, so a local pass means a CI pass.',
+        'The build is driven by **structured AI agent workflows** against a binding, machine-readable architecture blueprint. Every stack choice, invariant and task, with its definition of done, is written down **before any code is generated**. Phases run strictly in order, and each change is reviewed against that written specification rather than against intuition. The commerce core, catalogue, inventory, BFF read path and design-system seam are in place, and the storefront comes next.',
       ],
       architecture: [
-        'Frontend built with Next.js & React for SSR and optimal SEO performance',
-        'Backend powered by Java Spring Boot for robust transaction handling',
-        'PostgreSQL database utilizing normalized schemas for inventory management',
-        'Headless CMS integration for dynamic marketing content',
-        'GraphQL / BFF (Backend-For-Frontend) layer to optimize client data fetching',
+        'Single-tenant by design: one deployment per brand from shared code, with each brand supplied as a brand pack',
+        'Medusa 2.0 (TypeScript) as the order and inventory system, on PostgreSQL 16 and Redis',
+        'GraphQL Yoga BFF as the storefront\'s only route to commerce, CMS and search, validated with Zod',
+        'Turborepo and pnpm monorepo with shared money, contracts, design-token and config packages',
+        'Semantic colour roles and themes on Tailwind v4, with a CI contrast gate and a lint ban on literal colours',
+        'OpenTelemetry tracing and Sentry from the BFF through Medusa to Postgres, and AWS infrastructure in Terraform',
       ],
       features: [
-        'End-to-end shopping cart and secure checkout flows',
-        'Dynamic product filtering and variant inventory management',
-        'Administrative dashboard for order monitoring and metrics',
-        'High-performance image serving and CDN caching',
+        'White-label theming: a brand pack replaces palette, type, name and logo without touching shared code',
+        'Hebrew-first, right-to-left architecture that allows logical CSS properties only, enforced by lint',
+        'Exact shekel pricing in integer agorot, VAT-inclusive, with the VAT rate held as configuration',
+        'Stock reservations that cannot oversell under concurrency, proven by a multi-process race test',
+        'Catalogue of per-size and per-colour variants, categories and collections, with colour-linked galleries',
+        'Planned: the Next.js storefront, Israeli payment gateways with instalments, local carriers and pickup lockers',
       ],
       screenshots: [],
     },
-    tags: ['Next.js', 'Spring Boot', 'PostgreSQL', 'GraphQL', 'Headless CMS'],
+    tags: ['TypeScript', 'Medusa 2.0', 'GraphQL', 'PostgreSQL', 'Redis', 'Terraform'],
     isPrivate: true,
     icon: Globe,
+    seed: '#9c4146',
   },
   {
     id: 'tzachiapp',
@@ -187,6 +215,7 @@ export const projects: Project[] = [
     demo: 'https://play.google.com/store/apps/details?id=com.shahareinisim.tzachiapp',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#b26a00',
   },
   {
     id: 'files',
@@ -235,6 +264,7 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/Files',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#00838f',
   },
   {
     id: 'statussaver',
@@ -268,6 +298,7 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/StatusSaver',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#8e4585',
   },
 ];
 

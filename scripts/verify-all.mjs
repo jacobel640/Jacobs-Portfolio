@@ -39,7 +39,7 @@ const SUITES = [
     id: 'V3-SCREENSHOTS',
     name: 'Screenshot Asset Pipeline',
     script: join(SCRIPTS_DIR, 'verify-screenshots.mjs'),
-    description: 'Verifies 22 PNG screenshots in public/screenshots/ (9 TaskFlow, 13 Files)'
+    description: 'Verifies 30 PNG screenshots in public/screenshots/ (9 TaskFlow, 13 Files, 8 Minim4You)'
   },
   {
     id: 'V4-FALLBACK',
