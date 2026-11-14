@@ -36,7 +36,7 @@ export const SkillsSkeleton: FC = () => {
               <div className="w-28 h-3 rounded bg-md-surface-container-highest" />
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5, 6].map((pill) => (
-                  <div key={pill} className="w-20 h-8 rounded-full bg-md-surface-container-high" />
+                  <div key={pill} className="w-20 h-8 rounded-lg bg-md-surface-container-high" />
                 ))}
               </div>
             </div>
@@ -59,7 +59,7 @@ export const ProjectsSkeleton: FC = () => {
         {/* Filter Pills Skeleton */}
         <div className="flex justify-center gap-2 pt-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-24 h-10 rounded-full bg-md-surface-container-high" />
+            <div key={i} className="w-20 h-8 rounded-lg bg-md-surface-container-high" />
           ))}
         </div>
       </div>
@@ -89,7 +89,7 @@ export const ProjectsSkeleton: FC = () => {
             <div className="pt-4 border-t border-md-outline-variant flex items-center justify-between">
               <div className="flex gap-2">
                 {[1, 2, 3].map((tag) => (
-                  <div key={tag} className="w-16 h-7 rounded-full bg-md-surface-container-high" />
+                  <div key={tag} className="w-16 h-7 rounded-lg bg-md-surface-container-high" />
                 ))}
               </div>
               <div className="w-28 h-10 rounded-full bg-md-surface-container-highest" />

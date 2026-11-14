@@ -26,6 +26,12 @@ export interface Project {
   demo?: string;
   isPrivate?: boolean;
   icon: typeof Folder;
+  /**
+   * Seed for the project's Material You scheme (see `src/theme/color.ts`). The
+   * card borrows its accent roles and the case study takes the whole scheme,
+   * so each project reads as its own product without leaving the design system.
+   */
+  seed: string;
 }
 
 /**
@@ -85,6 +91,7 @@ export const projects: Project[] = [
     tags: ['Spring Boot', 'PostgreSQL', 'WhatsApp Cloud API', 'Wix APIs', 'Heroku'],
     isPrivate: true,
     icon: Server,
+    seed: '#2e7d32',
   },
   {
     id: 'taskflow',
@@ -132,6 +139,7 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/TaskFlow',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#6750a4',
   },
   {
     // Mirrors the private repo fashion-commerce-platform.
@@ -171,6 +179,7 @@ export const projects: Project[] = [
     tags: ['TypeScript', 'Medusa 2.0', 'GraphQL', 'PostgreSQL', 'Redis', 'Terraform'],
     isPrivate: true,
     icon: Globe,
+    seed: '#9c4146',
   },
   {
     id: 'tzachiapp',
@@ -206,6 +215,7 @@ export const projects: Project[] = [
     demo: 'https://play.google.com/store/apps/details?id=com.shahareinisim.tzachiapp',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#b26a00',
   },
   {
     id: 'files',
@@ -254,6 +264,7 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/Files',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#00838f',
   },
   {
     id: 'statussaver',
@@ -287,6 +298,7 @@ export const projects: Project[] = [
     github: 'https://github.com/jacobel640/StatusSaver',
     isPrivate: false,
     icon: Smartphone,
+    seed: '#8e4585',
   },
 ];
 

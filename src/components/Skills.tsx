@@ -1,6 +1,9 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Server, Check, Sparkles, Layers, Cpu } from 'lucide-react';
+import { revealContainer, revealItem } from '../theme/motion';
+import { Reveal, RevealItem } from './md/Reveal';
+import { SectionHeader } from './md/SectionHeader';
 
 interface SkillCategory {
   title: string;
@@ -81,119 +84,83 @@ const skillCategories: SkillCategory[] = [
 export const Skills: FC = () => {
   return (
     <section id="skills" className="relative py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-      {/* Header */}
-      <div className="relative z-10 text-center space-y-4 mb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 h-8 px-4 rounded-full text-xs font-medium tracking-wide uppercase bg-md-surface-container-high text-md-on-surface-variant border border-md-outline-variant"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-md-primary" />
-          <span>Core Capabilities</span>
-        </motion.div>
+      <SectionHeader
+        icon={Sparkles}
+        eyebrow="Core Capabilities"
+        title="Technical Mastery & Stack"
+        lead="A comprehensive breakdown of my engineering skill set across native Android mobile development, scalable backend systems, and next-generation AI workflows."
+      />
 
-        <motion.h2
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-md-on-surface"
-        >
-          Technical Mastery &amp; Stack
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-md-on-surface-variant max-w-2xl mx-auto leading-relaxed"
-        >
-          A comprehensive breakdown of my engineering skill set across native Android mobile development, scalable backend systems, and next-generation AI workflows.
-        </motion.p>
-      </div>
-
-      {/* Grid of 3 tonal surface-container cards */}
       {/* Each card spans three parent rows and mirrors them with subgrid, so the
           header, body and technologies bands line up across the row no matter
           how the copy wraps at a given width. */}
-      <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 grid-rows-[repeat(9,auto)] md:grid-rows-[repeat(6,auto)] lg:grid-rows-[repeat(3,auto)]">
-        {skillCategories.map((category, idx) => {
+      <Reveal
+        stagger={0.12}
+        className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 grid-rows-[repeat(9,auto)] md:grid-rows-[repeat(6,auto)] lg:grid-rows-[repeat(3,auto)]"
+      >
+        {skillCategories.map((category) => {
           const Icon = category.icon;
           return (
-            <motion.div
+            <RevealItem
               key={category.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.6, delay: idx * 0.15 }}
-              className="group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl bg-md-surface-container-low hover:bg-md-surface-container p-6 sm:p-7 border border-md-outline-variant transition-colors duration-medium ease-emphasized"
+              className="group relative grid row-span-3 grid-rows-subgrid gap-0 rounded-3xl bg-md-surface-container-low hover:bg-md-surface-container p-6 sm:p-7 border border-md-outline-variant/60 md-shape-morph"
             >
-              {/* Band 1 — identity */}
+              {/* Band 1 — identity. The icon tile morphs toward a circle while
+                  the card is hovered. */}
               <div className="flex items-start gap-4 mb-6">
                 <div
-                  className={`p-3.5 rounded-2xl ${category.iconTone} shrink-0`}
+                  className={`md-shape-morph p-3.5 rounded-2xl group-hover:rounded-[28px] ${category.iconTone} shrink-0`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-6 h-6" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-medium text-md-on-surface">
-                    {category.title}
-                  </h3>
-                  <p className="text-xs font-medium text-md-on-surface-variant mt-0.5">{category.subtitle}</p>
+                  <h3 className="text-title-lg text-md-on-surface">{category.title}</h3>
+                  <p className="text-label-md text-md-on-surface-variant mt-1">{category.subtitle}</p>
                 </div>
               </div>
 
               {/* Band 2 — what it means in practice */}
               <div className="pb-6">
-                <p className="text-sm text-md-on-surface-variant mb-5 leading-relaxed">
-                  {category.description}
-                </p>
+                <p className="text-body-md text-md-on-surface-variant mb-5">{category.description}</p>
 
-                {/* Proof points for this discipline */}
-                <div className="flex items-center gap-2 mb-3 text-xs font-medium uppercase tracking-wider text-md-on-surface-variant">
-                  <Sparkles className="w-3.5 h-3.5 text-md-primary" />
+                <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
+                  <Sparkles className="w-3.5 h-3.5 text-md-primary" aria-hidden="true" />
                   <span>Selected Impact</span>
                 </div>
                 <ul className="space-y-2">
                   {category.highlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="flex items-start gap-2.5 text-[13px] leading-snug text-md-on-surface"
-                    >
-                      <span
-                        className={`mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full ${category.dotTone}`}
-                      />
+                    <li key={highlight} className="flex items-start gap-2.5 text-body-md text-md-on-surface">
+                      <span className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${category.dotTone}`} />
                       <span>{highlight}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Band 3 — the stack */}
-              <div className="pt-4 border-t border-md-outline-variant">
-                <div className="flex items-center gap-2 mb-3 text-xs font-medium uppercase tracking-wider text-md-on-surface-variant">
-                  <Layers className="w-3.5 h-3.5 text-md-primary" />
+              {/* Band 3 — the stack. The chips arrive in sequence once the card
+                  itself has landed. */}
+              <div className="pt-4 border-t border-md-outline-variant/60">
+                <div className="flex items-center gap-2 mb-3 text-label-md uppercase tracking-wider text-md-on-surface-variant">
+                  <Layers className="w-3.5 h-3.5 text-md-primary" aria-hidden="true" />
                   <span>Key Technologies</span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <motion.ul variants={revealContainer(0.03, 0.15)} className="flex flex-wrap gap-2">
                   {category.skills.map((skill) => (
-                    <span
+                    <motion.li
                       key={skill}
-                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium bg-md-surface-container-high text-md-on-surface-variant hover:bg-md-secondary-container hover:text-md-on-secondary-container transition-all duration-medium ease-emphasized"
+                      variants={revealItem}
+                      className="md-shape-morph inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md bg-md-surface-container-high text-md-on-surface-variant hover:bg-md-secondary-container hover:text-md-on-secondary-container"
                     >
-                      <Check className="w-3.5 h-3.5 opacity-70" />
+                      <Check className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
                       {skill}
-                    </span>
+                    </motion.li>
                   ))}
-                </div>
+                </motion.ul>
               </div>
-            </motion.div>
+            </RevealItem>
           );
         })}
-      </div>
+      </Reveal>
     </section>
   );
 };

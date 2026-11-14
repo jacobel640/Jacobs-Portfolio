@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, FC, ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate } from 'framer-motion';
 import type { AnimationPlaybackControls, PanInfo } from 'framer-motion';
 import {
@@ -18,11 +18,17 @@ import {
   Server,
   Loader2,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect';
 import { RichText } from './RichText';
 import { thumbFor } from '../data/projects';
 import type { Project, Screenshot } from '../data/projects';
-import { Link } from '../router';
+import { cn } from '../lib/cn';
+import { themeVars } from '../theme/color';
+import { ENTER, motionScheme, revealContainer, revealItem, spatialWithEffects } from '../theme/motion';
+import { Button, IconButton } from './md/Button';
+import { Reveal, RevealItem } from './md/Reveal';
+import { StateLayer } from './md/StateLayer';
 
 const SWIPE_DISTANCE_RATIO = 0.4;
 
@@ -149,6 +155,46 @@ const LightboxPane: FC<LightboxPaneProps> = ({ shot, slot, ready, failed, onLoad
  * the site's writing. As a route it is prerendered like any other page, with
  * its own title, description and canonical URL.
  */
+interface SectionTitleProps {
+  icon: LucideIcon;
+  tone: string;
+  className?: string;
+  children: ReactNode;
+}
+
+/** A case-study section heading: a tinted glyph and a title-medium label. */
+const SectionTitle: FC<SectionTitleProps> = ({ icon: Icon, tone, className, children }) => (
+  <h2 className={cn('text-title-md text-md-on-surface mb-3 flex items-center gap-2', className)}>
+    <Icon className={cn('w-4 h-4', tone)} aria-hidden="true" />
+    <span>{children}</span>
+  </h2>
+);
+
+interface FactListProps {
+  icon: LucideIcon;
+  tone: string;
+  title: string;
+  items: string[];
+  markTone: string;
+}
+
+/** A tonal card holding one checked list: the architecture, or the features. */
+const FactList: FC<FactListProps> = ({ icon, tone, title, items, markTone }) => (
+  <RevealItem className="bg-md-surface-container-low p-5 sm:p-6 rounded-3xl border border-md-outline-variant/60">
+    <SectionTitle icon={icon} tone={tone} className="pb-3 mb-4 border-b border-md-outline-variant/60">
+      {title}
+    </SectionTitle>
+    <ul className="space-y-3">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-md-on-surface-variant text-body-md">
+          <CheckCircle2 className={cn('w-4 h-4 mt-0.5 shrink-0', markTone)} aria-hidden="true" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  </RevealItem>
+);
+
 export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   // The lightbox tracks a position in the project's screenshot list rather than
   // a single shot, so it can walk to the next or previous one.
@@ -389,232 +435,223 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
   const Icon = project.icon;
 
   return (
-    <article className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24">
+    // The page takes the project's own Material You scheme, surfaces and all.
+    // Every `md-*` utility and the MD3 web components inside resolve to it, so
+    // each case study reads as its own product within the same system.
+    <article
+      style={themeVars(project.seed)}
+      className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24"
+    >
       {/* A large-container surface with its own top app bar. The case study is a
           page rather than a modal (so it can be prerendered and linked), but it
-          reads as the same MD3 dialog surface. */}
-      <div className="relative z-10 rounded-3xl bg-md-surface-container-high border border-md-outline-variant shadow-md-2 overflow-hidden">
-        <div className="flex items-center justify-between gap-3 h-16 px-3 sm:px-4 bg-md-surface-container-highest border-b border-md-outline-variant">
-          <Link
-            to="/#projects"
-            className="state-layer md-focus inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full text-sm font-medium text-md-primary"
-          >
-            <ArrowLeft className="w-[18px] h-[18px]" />
-            <span>All projects</span>
-          </Link>
+          enters like an MD3 dialog: a short rise on the slow spatial spring. */}
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={ENTER}
+        className="relative z-10 rounded-[28px] bg-md-surface-container-high border border-md-outline-variant/60 shadow-md-2 overflow-hidden"
+      >
+        <div className="flex items-center justify-between gap-3 h-16 px-3 sm:px-4 bg-md-surface-container-highest border-b border-md-outline-variant/60">
+          <Button variant="text" to="/#projects" icon={ArrowLeft}>
+            All projects
+          </Button>
           {project.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium bg-md-surface-container-high text-md-on-surface-variant">
-              <Lock className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-label-md bg-md-surface-container-high text-md-on-surface-variant">
+              <Lock className="w-3 h-3" aria-hidden="true" />
               Private
             </span>
           )}
         </div>
 
         <div className="p-5 sm:p-8 lg:p-10">
-        <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-md-outline-variant">
-          <div className="p-3.5 rounded-2xl bg-md-primary-container text-md-on-primary-container inline-flex items-center justify-center w-fit">
-            <Icon className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-medium uppercase tracking-wider text-md-primary mb-1.5">
-              {project.categoryLabel}
-            </p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal text-md-on-surface tracking-tight">
-              {project.title}
-            </h1>
-          </div>
-        </header>
+          <Reveal immediate stagger={0.08} delay={0.1}>
+            <RevealItem>
+              <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 mb-8 border-b border-md-outline-variant/60">
+                <div className="p-4 rounded-[20px] bg-md-primary-container text-md-on-primary-container inline-flex items-center justify-center w-fit">
+                  <Icon className="w-7 h-7" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-label-lg uppercase tracking-wider text-md-primary mb-1.5">{project.categoryLabel}</p>
+                  <h1 className="text-headline-lg sm:text-display-sm lg:text-display-md text-md-on-surface text-balance">
+                    {project.title}
+                  </h1>
+                </div>
+              </header>
+            </RevealItem>
 
-        {/* The card blurb, as the page's standfirst. */}
-        <p className="text-base sm:text-lg text-md-on-surface-variant leading-relaxed mb-10">
-          {project.description}
-        </p>
+            {/* The card blurb, as the page's standfirst. */}
+            <RevealItem>
+              <p className="text-body-lg sm:text-title-lg sm:font-normal text-md-on-surface-variant mb-10 text-pretty">
+                {project.description}
+              </p>
+            </RevealItem>
+          </Reveal>
 
-        <div className="space-y-8">
-                {/* Overview */}
-                <div>
-                  <h4 className="text-base font-medium text-md-on-surface mb-3 flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-md-primary" />
-                    <span>Project Overview</span>
-                  </h4>
-                  <div className="space-y-4 text-md-on-surface-variant text-sm sm:text-base leading-relaxed bg-md-surface-container-low p-5 sm:p-6 rounded-2xl border border-md-outline-variant">
-                    {project.detailedContent.overview.map((paragraph, idx) => (
-                      // The opening paragraph reads as a lead: slightly larger and
-                      // brighter, so the eye has an obvious place to start.
-                      <p
-                        key={idx}
-                        className={
-                          idx === 0
-                            ? 'text-base sm:text-lg text-md-on-surface leading-relaxed'
-                            : undefined
-                        }
+          <div className="space-y-8">
+            {/* Overview */}
+            <Reveal>
+              <RevealItem>
+                <SectionTitle icon={Folder} tone="text-md-primary">
+                  Project Overview
+                </SectionTitle>
+              </RevealItem>
+              <RevealItem className="space-y-4 text-md-on-surface-variant text-body-md sm:text-body-lg bg-md-surface-container-low p-5 sm:p-6 rounded-3xl border border-md-outline-variant/60">
+                {project.detailedContent.overview.map((paragraph, idx) => (
+                  // The opening paragraph reads as a lead: slightly larger and
+                  // brighter, so the eye has an obvious place to start.
+                  <p key={idx} className={idx === 0 ? 'text-body-lg sm:text-lg text-md-on-surface' : undefined}>
+                    <RichText>{paragraph}</RichText>
+                  </p>
+                ))}
+              </RevealItem>
+            </Reveal>
+
+            {/* Architecture & Features */}
+            <Reveal stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FactList
+                icon={Server}
+                tone="text-md-secondary"
+                title="Architecture & Engineering"
+                items={project.detailedContent.architecture}
+                markTone="text-md-success"
+              />
+              <FactList
+                icon={Sparkles}
+                tone="text-md-tertiary"
+                title="Key Features & Highlights"
+                items={project.detailedContent.features}
+                markTone="text-md-primary"
+              />
+            </Reveal>
+
+            {/* Tech stack */}
+            <Reveal>
+              <RevealItem>
+                <SectionTitle icon={Layers} tone="text-md-tertiary">
+                  Technology Stack
+                </SectionTitle>
+              </RevealItem>
+              <motion.ul variants={revealContainer(0.03)} className="flex flex-wrap gap-2">
+                {project.tags.map((tag) => (
+                  <motion.li
+                    key={tag}
+                    variants={revealItem}
+                    className="inline-flex items-center h-8 px-3.5 text-label-lg rounded-lg bg-md-secondary-container text-md-on-secondary-container"
+                  >
+                    {tag}
+                  </motion.li>
+                ))}
+              </motion.ul>
+            </Reveal>
+
+            {/* Screenshots */}
+            <Reveal>
+              <RevealItem className="flex items-center justify-between gap-4 mb-4">
+                <SectionTitle icon={ImageIcon} tone="text-md-secondary" className="mb-0">
+                  Screenshots &amp; Visual Artifacts
+                </SectionTitle>
+                {shots.length > 0 && (
+                  <span className="text-body-sm text-md-on-surface-variant">Click any image to zoom</span>
+                )}
+              </RevealItem>
+
+              {shots.length > 0 ? (
+                <motion.div variants={revealContainer(0.05)} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {shots.map((shot, index) => (
+                    <motion.figure key={shot.src} variants={revealItem} className="m-0">
+                      <button
+                        type="button"
+                        onClick={() => openImage(index)}
+                        aria-label={`Zoom: ${shot.caption}`}
+                        className="md-interactive md-shape-morph group block w-full rounded-2xl hover:rounded-[28px] aspect-[9/20] shadow-md-1 hover:shadow-md-3 cursor-zoom-in"
                       >
-                        <RichText>{paragraph}</RichText>
-                      </p>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Architecture & Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Architecture */}
-                  <div className="bg-md-surface-container-low p-5 rounded-2xl border border-md-outline-variant">
-                    <h4 className="text-sm font-medium text-md-on-surface mb-4 flex items-center gap-2 border-b border-md-outline-variant pb-2.5">
-                      <Server className="w-4 h-4 text-md-secondary" />
-                      <span>Architecture &amp; Engineering</span>
-                    </h4>
-                    <ul className="space-y-3">
-                      {project.detailedContent.architecture.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-md-on-surface-variant text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-md-success mt-0.5 shrink-0" />
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Key Features */}
-                  <div className="bg-md-surface-container-low p-5 rounded-2xl border border-md-outline-variant">
-                    <h4 className="text-sm font-medium text-md-on-surface mb-4 flex items-center gap-2 border-b border-md-outline-variant pb-2.5">
-                      <Sparkles className="w-4 h-4 text-md-tertiary" />
-                      <span>Key Features &amp; Highlights</span>
-                    </h4>
-                    <ul className="space-y-3">
-                      {project.detailedContent.features.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-md-on-surface-variant text-xs sm:text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-md-primary mt-0.5 shrink-0" />
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Tech Stack */}
-                <div>
-                  <h4 className="text-base font-medium text-md-on-surface mb-3 flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-md-tertiary" />
-                    <span>Technology Stack</span>
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {project.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center h-8 px-3.5 text-xs font-medium rounded-full bg-md-surface-container-highest text-md-on-surface"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Screenshots & Media Section */}
-                <div>
-                  <h4 className="text-base font-medium text-md-on-surface mb-4 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-md-secondary" />
-                      <span>Screenshots &amp; Visual Artifacts</span>
-                    </span>
-                    {shots.length > 0 && (
-                      <span className="text-xs font-normal text-md-on-surface-variant">
-                        Click any image to zoom
-                      </span>
-                    )}
-                  </h4>
-
-                  {shots.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {shots.map((shot, index) => (
-                        <figure key={shot.src} className="m-0">
-                          <button
-                            type="button"
-                            onClick={() => openImage(index)}
-                            aria-label={`Zoom: ${shot.caption}`}
-                            className="md-focus group relative block w-full overflow-hidden rounded-2xl aspect-[9/20] border border-md-outline-variant hover:border-md-outline shadow-md-1 hover:shadow-md-2 transition-[box-shadow,border-color] duration-medium ease-emphasized cursor-pointer"
-                          >
-                            <img
-                              src={thumbFor(shot.src)}
-                              alt={`${project.title} — ${shot.caption}`}
-                              loading="lazy"
-                              decoding="async"
-                              width={432}
-                              height={960}
-                              onError={(e) => {
-                                // Fall back to the original PNG if the WebP thumb is missing.
-                                const img = e.currentTarget;
-                                if (img.src !== shot.src) img.src = shot.src;
-                              }}
-                              className="block w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] ease-emphasized"
-                            />
-                            <span className="absolute inset-0 bg-gradient-to-t from-md-surface-dim/95 via-md-surface-dim/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-200 flex items-end justify-end p-2.5">
-                              <span className="p-1.5 rounded-full bg-md-primary text-md-on-primary">
-                                <ZoomIn className="w-3.5 h-3.5" />
-                              </span>
+                        {/* The image clips to the button's live radius, so the
+                            corner morph on hover reshapes the picture too. */}
+                        <span className="absolute inset-0 overflow-hidden rounded-[inherit] border border-md-outline-variant/60">
+                          <img
+                            src={thumbFor(shot.src)}
+                            alt={`${project.title} — ${shot.caption}`}
+                            loading="lazy"
+                            decoding="async"
+                            width={432}
+                            height={960}
+                            onError={(e) => {
+                              // Fall back to the original PNG if the WebP thumb is missing.
+                              const img = e.currentTarget;
+                              if (img.src !== shot.src) img.src = shot.src;
+                            }}
+                            className="block w-full h-full object-cover transition-transform duration-spatial-slow ease-spatial-slow group-hover:scale-[1.04]"
+                          />
+                          <span className="absolute inset-0 bg-gradient-to-t from-md-surface-dim/95 via-md-surface-dim/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-effects ease-effects flex items-end justify-end p-2.5">
+                            <span className="p-1.5 rounded-full bg-md-primary text-md-on-primary translate-y-1 group-hover:translate-y-0 transition-transform duration-spatial ease-spatial">
+                              <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
                             </span>
-                          </button>
-                          <figcaption className="mt-2 text-[11px] leading-snug text-md-on-surface-variant text-center px-1">
-                            {shot.caption}
-                          </figcaption>
-                        </figure>
-                      ))}
+                          </span>
+                        </span>
+                        <StateLayer shape="large" />
+                      </button>
+                      <figcaption className="mt-2 text-label-sm font-normal text-md-on-surface-variant text-center px-1">
+                        {shot.caption}
+                      </figcaption>
+                    </motion.figure>
+                  ))}
+                </motion.div>
+              ) : (
+                <RevealItem className="rounded-3xl border border-md-outline-variant/60 bg-md-surface-container-low p-8 text-center">
+                  <ImageIcon className="w-10 h-10 mx-auto text-md-outline mb-3 opacity-70" aria-hidden="true" />
+                  <p className="text-title-sm text-md-on-surface-variant">No screenshots available to display</p>
+                </RevealItem>
+              )}
+            </Reveal>
+
+            {/* Repository & live demo */}
+            <Reveal>
+              <RevealItem className="bg-md-surface-container-low rounded-3xl p-5 sm:p-6 border border-md-outline-variant/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-title-md text-md-on-surface mb-1">Project Repository &amp; Delivery</h2>
+                  <p className="text-body-md text-md-on-surface-variant max-w-md">
+                    {project.isPrivate
+                      ? 'This repository is private due to client confidentiality, enterprise credentials, or proprietary intellectual property.'
+                      : 'Explore the full source code, commit history, and architectural implementation on GitHub.'}
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  {project.isPrivate ? (
+                    <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-5 rounded-full bg-md-surface-container-highest text-md-on-surface-variant text-label-lg">
+                      <Lock className="w-4 h-4" aria-hidden="true" />
+                      <span>Private Repository</span>
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-md-outline-variant bg-md-surface-container-low p-8 text-center">
-                      <ImageIcon className="w-10 h-10 mx-auto text-md-outline mb-3 opacity-70" />
-                      <p className="text-sm font-medium text-md-on-surface-variant">
-                        No screenshots available to display
-                      </p>
-                    </div>
+                  ) : project.github ? (
+                    <Button
+                      href={project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      icon={Github}
+                      className="w-full sm:w-auto"
+                    >
+                      Source Code
+                    </Button>
+                  ) : null}
+
+                  {project.demo && (
+                    <Button
+                      variant="tonal"
+                      href={project.demo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      icon={ExternalLink}
+                      className="w-full sm:w-auto"
+                    >
+                      Live Demo
+                    </Button>
                   )}
                 </div>
-
-                {/* Repository & Live Demo Actions */}
-                <div className="bg-md-surface-container-low rounded-2xl p-5 sm:p-6 border border-md-outline-variant flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div>
-                    <h5 className="text-md-on-surface font-medium text-sm sm:text-base mb-1">
-                      Project Repository &amp; Delivery
-                    </h5>
-                    <p className="text-xs sm:text-sm text-md-on-surface-variant max-w-md">
-                      {project.isPrivate
-                        ? 'This repository is private due to client confidentiality, enterprise credentials, or proprietary intellectual property.'
-                        : 'Explore the full source code, commit history, and architectural implementation on GitHub.'}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                    {project.isPrivate ? (
-                      <div className="w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-5 rounded-full bg-md-surface-container-highest text-md-on-surface-variant text-sm font-medium">
-                        <Lock className="w-4 h-4" />
-                        <span>Private Repository</span>
-                      </div>
-                    ) : project.github ? (
-                      <a
-                        href={project.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="state-layer md-focus w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-6 rounded-full bg-md-primary text-md-on-primary font-medium text-sm transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
-                      >
-                        <Github className="w-4 h-4" />
-                        <span>Source Code</span>
-                      </a>
-                    ) : null}
-
-                    {project.demo && (
-                      <a
-                        href={project.demo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="state-layer md-focus w-full sm:w-auto justify-center inline-flex items-center gap-2 h-10 px-6 rounded-full bg-md-secondary-container text-md-on-secondary-container font-medium text-sm transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Live Demo</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
+              </RevealItem>
+            </Reveal>
+          </div>
         </div>
-        </div>
-      </div>
+      </motion.div>
 
       {/* Lightbox / Zoom Overlay */}
       <AnimatePresence>
@@ -636,18 +673,18 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+              transition={spatialWithEffects(motionScheme.standard.spatial.default, motionScheme.standard.effects.fast)}
               className="relative max-w-5xl max-h-[90vh] flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
+              <IconButton
+                icon={X}
+                variant="tonal"
                 onClick={closeLightbox}
                 autoFocus
-                className="state-layer md-focus absolute -top-14 right-0 p-2.5 text-md-on-surface-variant bg-md-surface-container-high rounded-full"
+                className="absolute -top-14 right-0"
                 aria-label="Close image preview"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              />
 
               {/* Arrows flank the image rather than sitting on top of it, so
                   nothing covers the screenshot. They are laid out first, which
@@ -656,24 +693,24 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                   the overlay's own padding are taken out of the viewport. */}
               <div className="group flex items-center gap-1.5 sm:gap-3 max-w-full">
                 {canNavigate && (
-                  <button
-                    type="button"
+                  <IconButton
+                    icon={ChevronLeft}
+                    variant="tonal"
                     onClick={() => goToImage(-1)}
                     aria-label="Previous screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`state-layer md-focus shrink-0 p-2 sm:p-2.5 rounded-full text-md-on-surface bg-md-surface-container-high shadow-md-2 transition-opacity duration-medium ease-emphasized ${
+                    className={cn(
+                      'transition-opacity duration-effects ease-effects',
                       isSwiping
                         ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
-                    }`}
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
+                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100',
+                    )}
+                  />
                 )}
 
                 <div
                   ref={frameRef}
-                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-2xl border border-md-outline-variant shadow-md-3 bg-md-surface-dim ${
+                  className={`relative aspect-[9/20] h-[76vh] overflow-hidden rounded-3xl border border-md-outline-variant/60 shadow-md-3 bg-md-surface-dim ${
                     canNavigate ? 'max-h-[calc((100vw-7.5rem)*20/9)]' : 'max-w-full'
                   }`}
                 >
@@ -713,31 +750,31 @@ export const ProjectCaseStudy: FC<{ project: Project }> = ({ project }) => {
                 </div>
 
                 {canNavigate && (
-                  <button
-                    type="button"
+                  <IconButton
+                    icon={ChevronRight}
+                    variant="tonal"
                     onClick={() => goToImage(1)}
                     aria-label="Next screenshot"
                     tabIndex={isSwiping ? -1 : undefined}
-                    className={`state-layer md-focus shrink-0 p-2 sm:p-2.5 rounded-full text-md-on-surface bg-md-surface-container-high shadow-md-2 transition-opacity duration-medium ease-emphasized ${
+                    className={cn(
+                      'transition-opacity duration-effects ease-effects',
                       isSwiping
                         ? 'opacity-0 pointer-events-none'
-                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100'
-                    }`}
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
+                        : 'opacity-70 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100',
+                    )}
+                  />
                 )}
               </div>
 
               <p
-                className="mt-3 text-xs sm:text-sm text-md-on-surface font-medium tracking-wide text-center px-2"
+                className="mt-3 text-label-lg text-md-on-surface text-center px-2"
                 aria-live="polite"
               >
                 {selectedImage.caption}
               </p>
 
               {canNavigate && selectedIndex !== null && (
-                <p className="mt-1 text-[11px] text-md-on-surface-variant tracking-wide">
+                <p className="mt-1 text-label-sm font-normal text-md-on-surface-variant tabular-nums">
                   {selectedIndex + 1} / {shotCount}
                   <span className="sr-only">
                     {' '}

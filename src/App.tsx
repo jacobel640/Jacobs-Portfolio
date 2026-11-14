@@ -1,6 +1,9 @@
 import { FC, lazy, Suspense, useEffect } from 'react';
 import { MotionConfig } from 'framer-motion';
+import { ArrowLeft } from 'lucide-react';
 import Navbar from './components/Navbar';
+import { Button } from './components/md/Button';
+import { ScrollProgress } from './components/md/ScrollProgress';
 import Hero from './components/Hero';
 import { SkillsSkeleton, ProjectsSkeleton, ContactSkeleton } from './components/GlassSkeleton';
 import { useHashScroll } from './hooks/useHashScroll';
@@ -29,17 +32,14 @@ const Home: FC = () => {
 
 const NotFound: FC = () => (
   <main className="relative min-h-[60vh] flex flex-col items-center justify-center text-center px-6 py-32">
-    <p className="text-sm font-medium uppercase tracking-wider text-md-primary mb-3">404</p>
-    <h1 className="text-3xl sm:text-4xl font-normal text-md-on-surface mb-4">Page not found</h1>
-    <p className="text-md-on-surface-variant max-w-md mb-8">
+    <p className="text-label-lg uppercase tracking-wider text-md-primary mb-3">404</p>
+    <h1 className="text-headline-lg sm:text-display-sm text-md-on-surface mb-4">Page not found</h1>
+    <p className="text-body-lg text-md-on-surface-variant max-w-md mb-8">
       That page does not exist. The projects and case studies are all on the home page.
     </p>
-    <a
-      href="/"
-      className="state-layer md-focus inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-md-primary text-md-on-primary font-medium text-sm transition-shadow duration-medium ease-emphasized hover:shadow-md-1"
-    >
+    <Button href="/" icon={ArrowLeft}>
       Back to the portfolio
-    </a>
+    </Button>
   </main>
 );
 
@@ -79,6 +79,7 @@ export const App: FC = () => {
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative min-h-screen bg-md-surface text-md-on-surface">
+        <ScrollProgress />
         <Navbar />
 
         {resolved.kind === 'home' && <Home />}
